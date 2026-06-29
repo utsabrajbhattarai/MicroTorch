@@ -2,6 +2,8 @@
 
 namespace microtorch {
 
-// TODO: Tensor implementation.
+    void Tensor::zero_grad() {
+        grad.setZero(); //sets grad zero
+    }
 
 }  // namespace microtorch
