@@ -32,4 +32,6 @@ target_link_libraries(microtorch_tests
 # registers each Catch2 TEST_CASE as its own ctest entry, so a failure
 # points you straight at which op broke instead of "tests failed" as a blob
 include(Catch)
-catch_discover_tests(microtorch_tests)
+catch_discover_tests(microtorch_tests
+    PROPERTIES SKIP_REGULAR_EXPRESSION "SKIPPED:"     #prevents failures from skipped tests
+)
