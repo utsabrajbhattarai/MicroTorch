@@ -7,6 +7,7 @@
 add_library(microtorch STATIC
     # ---- core ----
     Tensor.cpp
+    toy_data.cpp
 
     # ---- ops/ (one file per op, add as you build them) ----
     ops/matmul.cpp
