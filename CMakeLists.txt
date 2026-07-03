@@ -17,8 +17,7 @@ endif()
 include(FetchContent)
 FetchContent_Declare(
   eigen
-  GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-  GIT_TAG        3.4.0
+  URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
 )
 # Eigen ships its own tests/docs targets we don't want CMake to configure
 set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)

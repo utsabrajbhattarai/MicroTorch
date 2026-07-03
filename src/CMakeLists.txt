@@ -7,6 +7,7 @@
 add_library(microtorch STATIC
     # ---- core ----
     Tensor.cpp
+    data_loader.cpp
 
     # ---- ops/ (one file per op, add as you build them) ----
     ops/matmul.cpp
@@ -36,6 +37,8 @@ target_link_libraries(microtorch
     PUBLIC Eigen3::Eigen
 )
 
-target_compile_options(microtorch PRIVATE
-    -Wall -Wextra        # catch real bugs at compile time, not runtime
-)
+if(MSVC)
+    target_compile_options(microtorch PRIVATE /W4)
+else()
+    target_compile_options(microtorch PRIVATE -Wall -Wextra)
+endif()
