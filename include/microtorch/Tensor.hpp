@@ -30,11 +30,12 @@ public:
     void zero_grad(); //sets the gradient to zero so that no leak in gradients from prev. back-passes 
     void backward();    //the backward operations including 
 
-    //makes a heap Tensor and hands back a shared_ptr to it
-    inline TensorPtr make_tensor(const Eigen::MatrixXd& values) {
-        return std::make_shared<Tensor>(values);
-    }
+    
 
 };
+//makes a heap Tensor and hands back a shared_ptr to it
+inline TensorPtr make_tensor(const Eigen::MatrixXd& values) {   //need to keep it outside tensor class so to create a require tensor
+    return std::make_shared<Tensor>(values);
+}
 
 }  // namespace microtorch
