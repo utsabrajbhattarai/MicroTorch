@@ -1,14 +1,15 @@
 #pragma once
 
 #include <Eigen/Dense>
+#include <functional>
 #include <memory>
 #include <vector>
-#include <functional>
+#include <unordered_set>
 
 namespace microtorch {
 
 class Tensor;  //forward declaration so that alias below can use it
-using TensorPtr = std::shared_ptr<Tensor>;  //easy to use Tensor Ptr shortcut
+using TensorPtr = std::shared_ptr<Tensor>;  //easy to use Tensor Ptr shortcut btw this extennds lifetime of a certain variable
 
 class Tensor {
 public:
