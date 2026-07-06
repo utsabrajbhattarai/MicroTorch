@@ -1,10 +1,16 @@
 #include "microtorch/ops/broadcast_add.hpp"
+#include <cassert>
 
 namespace microtorch {
 
 // TODO: broadcast_add forward + backward implementation.
 
 TensorPtr broadcast_add(const TensorPtr& a, const TensorPtr& b){
+
+
+    //ensuring that the broadcast add is only MxN and 1xN and user isn't doing something silly atm
+    assert(b->data.rows() == 1 && "broadcast_add: b must be a single row (1, N)");
+    assert(a->data.cols() == b->data.cols() && "broadcast_add: a and b must have same #columns");
 
     //forward pass for output adding matrices
     //note that here we are adding B's single row to every row of A, this is to impersonate the only type of broadcast add we will be using for our models later on the addition fo further broadcasting rules to impersonate other typa matrix addition are independent features that can be further added but for the scope of our project we will be limiting to only [M,N]+{1,N] typa add used generally for GNN bias

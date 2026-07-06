@@ -1,5 +1,6 @@
 #pragma once
 #include "microtorch/Tensor.hpp"
+#include <cassert>
 
 namespace microtorch {
 
