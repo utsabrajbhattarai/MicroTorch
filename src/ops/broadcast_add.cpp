@@ -3,7 +3,6 @@
 
 namespace microtorch {
 
-// TODO: broadcast_add forward + backward implementation.
 
 TensorPtr broadcast_add(const TensorPtr& a, const TensorPtr& b){
 
