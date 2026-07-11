@@ -24,6 +24,8 @@ add_executable(microtorch_tests
     test_adam.cpp
     test_gradcheck_harness.cpp
     test_toy_data.cpp
+    test_gradcheck_harness.cpp   # the harness itself gets its own test
+    test_dataload.cpp
 )
 
 target_link_libraries(microtorch_tests
