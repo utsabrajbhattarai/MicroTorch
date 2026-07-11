@@ -3,8 +3,8 @@
 
 namespace microtorch {
 
-// sum/mean reduction -- shared primitive every loss needs
-// TODO: declare forward + backward signatures once Tensor's design is set.
-Tensor sum_mean(const Tensor& a, const Tensor& b);
+// sum/mean reduction turning a whole matrix into either sums or means based on the given loss function derivation
+TensorPtr sum(const TensorPtr& a);
+TensorPtr mean(const TensorPtr& a);
 
 }  // namespace microtorch

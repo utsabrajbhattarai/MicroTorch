@@ -3,8 +3,7 @@
 
 namespace microtorch {
 
-// ReLU nonlinearity -- trivial backward
-// TODO: declare forward + backward signatures once Tensor's design is set.
-Tensor relu(const Tensor& a, const Tensor& b);
+//ReLU nonlinearity
+TensorPtr relu(const TensorPtr& a);
 
 }  // namespace microtorch

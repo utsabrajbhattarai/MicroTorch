@@ -1,10 +1,10 @@
 #pragma once
 #include "microtorch/Tensor.hpp"
+#include <Eigen/SparseCore>
 
 namespace microtorch {
 
-// neighbor aggregation -- sparse adjacency matmul, the one GNN-specific op
-// TODO: declare forward + backward signatures once Tensor's design is set.
-Tensor neighbor_aggregation(const Tensor& a, const Tensor& b);
+// neighbor aggregation : sparse adjacency matmul specific matmul for node relationship in GNN
+TensorPtr neighbor_aggregation(const Eigen::SparseMatrix<double>& A, const TensorPtr& X);
 
 }  // namespace microtorch
