@@ -6,7 +6,7 @@ namespace microtorch {
 TensorPtr neighbor_aggregation(const Eigen::SparseMatrix<double>& A, const TensorPtr& X){
 
     //0) Assurance: for valid matrix multiplication
-    assert(X->data.rows() == A.cols() && "MatMul: A's columns must equal B's row");
+    assert(X->data.rows() == A.cols() && "MatMul: A's columns must equal X's row");
 
 
     //1) Forward pass
