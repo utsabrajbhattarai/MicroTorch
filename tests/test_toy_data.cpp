@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include "microtorch/toy_data.hpp"
+#include "microtorch/data/toy_data.hpp"
 
 TEST_CASE("make_spiral returns correct shape", "[toy_data]") {
     Eigen::MatrixXd pts = make_spiral(500);

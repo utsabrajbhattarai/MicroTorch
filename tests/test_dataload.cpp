@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include "microtorch/data_loader.hpp"
+#include "microtorch/data/data_loader.hpp"
 
 #include <fstream>    //for creating temporary CSV file
 #include <cstdio>      // for std::remove()

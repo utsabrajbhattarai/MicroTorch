@@ -1,4 +1,4 @@
-#include "microtorch/toy_data.hpp" //header file from the include directory
+#include "microtorch/data/toy_data.hpp" //header file from the include directory
 #include <cmath>
 #include <random>
 
