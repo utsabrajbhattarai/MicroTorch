@@ -9,17 +9,17 @@ add_library(microtorch STATIC
     Tensor.cpp
 
     # ---- data ----
-    toy_data.cpp
-    data_loader.cpp
+    data/toy_data.cpp       #for diffusion model, toy data generation
+    data/data_loader.cpp    #for GNN model data loading from csv
 
     # ---- ops/ (one file per op, add as you build them) ----
     ops/matmul.cpp
     ops/broadcast_add.cpp
     ops/relu.cpp
     ops/neighbor_aggregation.cpp
-    ops/reduction.cpp          # sum/mean
+    ops/reduction.cpp          # sum and mean
     ops/mse_loss.cpp
-    ops/softmax_cross_entropy.cpp
+    ops/softmax_cross_entropy.cpp   #softmax and cross-entropy
 
     # ---- optim/ ----
     optim/sgd.cpp
