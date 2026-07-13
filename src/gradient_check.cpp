@@ -2,7 +2,7 @@
 
 namespace microtorch{
 
-    double gradient_check(std::function<TensorPtr(TensorPtr)> loss_fn, const TensorPtr& input, double eps = 1e-6){
+    double gradient_check(std::function<TensorPtr(TensorPtr)> loss_fn, const TensorPtr& input, double eps){
 
         //Zeroing the input gradient just in case user passed with non-zeroed values:
         input->zero_grad();
@@ -18,7 +18,7 @@ namespace microtorch{
         double max_error = 0.00;
         for(int i = 0; i < input->data.rows(); i++){
 
-            for(int j = 0; j < input->data.columns(); j++){
+            for(int j = 0; j < input->data.cols(); j++){
 
                 double x = input->data(i,j);
 
@@ -37,7 +37,7 @@ namespace microtorch{
                 double numerical_gradient = (loss_plus - loss_minus) / (2 * eps);
 
                 //get the maximum error:
-                max_error = std::max(max_err, std::abs(numerical_gradient - analytic_gradient(i,j)));
+                max_error = std::max(max_error, std::abs(numerical_gradient - analytic_gradient(i,j)));
 
             }
         }

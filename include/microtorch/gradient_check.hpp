@@ -1,6 +1,8 @@
 #pragma once
 #include "microtorch/Tensor.hpp"
 #include <functional>
+#include <cmath>
+#include <algorithm>
 
 namespace microtorch {
 
