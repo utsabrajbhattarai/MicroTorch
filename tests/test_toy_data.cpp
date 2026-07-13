@@ -70,3 +70,19 @@ TEST_CASE("make_concentric_circles points sit on expected radii", "[toy_data]") 
         REQUIRE(matches_known_radius);
     }
 }
+
+TEST_CASE("make_heart returns correct shape", "[toy_data]") {
+    Eigen::MatrixXd pts = make_heart(500);
+    REQUIRE(pts.rows() == 500);
+    REQUIRE(pts.cols() == 2);
+}
+
+TEST_CASE("make_heart points stay within expected bounds", "[toy_data]") {
+    Eigen::MatrixXd pts = make_heart(500, 0.0);  //noise=0 for exact bound
+    for (int i = 0; i < pts.rows(); ++i) {
+        REQUIRE(pts(i, 0) >= -2.5);
+        REQUIRE(pts(i, 0) <= 2.5);
+        REQUIRE(pts(i, 1) >= -2.5);
+        REQUIRE(pts(i, 1) <= 2.5);
+    }
+}

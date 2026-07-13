@@ -109,5 +109,30 @@ Eigen::MatrixXd make_concentric_circles(int n, double noise) {
 
     return points;
 }
+
+//heart shape
+Eigen::MatrixXd make_heart(int n, double noise) {
+    Eigen::MatrixXd points(n, 2);
+    std::mt19937 rng(42);
+    std::uniform_real_distribution<double> t_dist(0.0, 2 * M_PI);
+    std::normal_distribution<double> noise_dist(0.0, noise > 0.0 ? noise : 1.0);
+
+    for (int i = 0; i < n; ++i) {
+        double t = t_dist(rng);
+        double x = 16 * std::pow(std::sin(t), 3); //formula for x coordinate of the heart shape
+        double y = 13 * std::cos(t) - 5 * std::cos(2*t) - 2 * std::cos(3*t) - std::cos(4*t); //formula for y coordinate of the heart shape
+
+        x /= 8.0;  //scale down to fit [-2,2] box
+        y /= 8.0;  //scale down to fit [-2,2] box
+
+        double nx = (noise > 0.0) ? noise_dist(rng) : 0.0;
+        double ny = (noise > 0.0) ? noise_dist(rng) : 0.0;
+        points(i, 0) = x + nx;
+        points(i, 1) = y + ny;
+    }
+
+    return points;
+}
+
 }
 
