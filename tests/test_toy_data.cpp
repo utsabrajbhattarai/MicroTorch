@@ -39,3 +39,19 @@ TEST_CASE("make_two_moons lower moon sits below upper moon", "[toy_data]") {
         REQUIRE(pts(j, 1) <= 0.0 + 1e-9);  //shifted down, should stay non-positive
     }
 }
+
+TEST_CASE("make_infinity returns correct shape", "[toy_data]") {
+    Eigen::MatrixXd pts = make_infinity(500);
+    REQUIRE(pts.rows() == 500);
+    REQUIRE(pts.cols() == 2);
+}
+
+TEST_CASE("make_infinity points stay within expected bounds", "[toy_data]") {
+    Eigen::MatrixXd pts = make_infinity(500, 0.0);  //noise=0 for exact bound
+    for (int i = 0; i < pts.rows(); ++i) {
+        REQUIRE(pts(i, 0) >= -2.0 - 1e-9);
+        REQUIRE(pts(i, 0) <= 2.0 + 1e-9);
+        REQUIRE(pts(i, 1) >= -1.0 - 1e-9);  //y = sin(t)*cos(t)*2 has max amplitude 1
+        REQUIRE(pts(i, 1) <= 1.0 + 1e-9);
+    }
+}

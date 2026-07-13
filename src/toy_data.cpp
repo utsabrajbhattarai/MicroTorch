@@ -66,4 +66,26 @@ Eigen::MatrixXd make_two_moons(int n, double noise) {
     return points;
 }
 
+//infinity symbol (lemniscate)
+Eigen::MatrixXd make_infinity(int n, double noise) {
+    Eigen::MatrixXd points(n, 2); //n rows, 2 columns (x and y)
+    std::mt19937 rng(42); //random number generator seeded with 42 for reproducibility; can be anything.
+    std::uniform_real_distribution<double> t_dist(0.0, 2 * M_PI);
+    std::normal_distribution<double> noise_dist(0.0, noise > 0.0 ? noise : 1.0);
+
+    for (int i = 0; i < n; ++i) {
+        double t = t_dist(rng);
+        double x = 2 * std::cos(t); //formula for x coordinate of the infinity symbol
+        double y = 2 * std::sin(t) * std::cos(t); //formula for y coordinate of the infinity symbol
+
+        double nx = (noise > 0.0) ? noise_dist(rng) : 0.0;
+        double ny = (noise > 0.0) ? noise_dist(rng) : 0.0;
+        points(i, 0) = x + nx;
+        points(i, 1) = y + ny;
+    }
+
+    return points;
 }
+
+}
+
