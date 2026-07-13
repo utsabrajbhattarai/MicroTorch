@@ -86,3 +86,18 @@ TEST_CASE("make_heart points stay within expected bounds", "[toy_data]") {
         REQUIRE(pts(i, 1) <= 2.5);
     }
 }
+
+TEST_CASE("make_checkerboard returns exactly n points", "[toy_data]") {
+    Eigen::MatrixXd pts = make_checkerboard(500); //500 points, noise=0.0 by default
+    REQUIRE(pts.rows() == 500); //500 points requested, should return 500 points
+    REQUIRE(pts.cols() == 2); //2D points, so 2 columns
+}
+
+TEST_CASE("make_checkerboard points satisfy the checkerboard rule", "[toy_data]") {
+    Eigen::MatrixXd pts = make_checkerboard(500, 0.0);  //noise=0 for exact checkerboard pattern
+    for (int i = 0; i < pts.rows(); ++i) {
+        int gx = (int)std::floor(pts(i, 0)); //floor the x coordinate to get the grid cell in x direction
+        int gy = (int)std::floor(pts(i, 1)); //floor the y coordinate to get the grid cell in y direction
+        REQUIRE((gx + gy) % 2 == 0); //checkerboard rule: sum of grid coordinates should be even
+    }
+}

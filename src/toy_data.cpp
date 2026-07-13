@@ -134,5 +134,34 @@ Eigen::MatrixXd make_heart(int n, double noise) {
     return points;
 }
 
+//checkerboard pattern
+Eigen::MatrixXd make_checkerboard(int n, double noise) {
+    Eigen::MatrixXd points(n, 2); //create an Eigen matrix to hold the points, with n rows and 2 columns (x and y).
+    std::mt19937 rng(42);
+    std::uniform_real_distribution<double> coord_dist(-2.0, 2.0); //uniform distribution for x and y coordinates in the range [-2, 2]
+    std::normal_distribution<double> noise_dist(0.0, noise > 0.0 ? noise : 1.0); //normal distribution for noise, with mean 0 and standard deviation equal to the noise parameter (or 1.0 if noise is 0 or negative)
+
+    int accepted = 0;
+    while (accepted < n) {
+        double x = coord_dist(rng); //generate a random x coordinate in the range [-2, 2]
+        double y = coord_dist(rng); //generate a random y coordinate in the range [-2, 2]
+
+            //floor() gives the largest integer less than or equal to the value
+        int gx = (int)std::floor(x); //get the integer grid coordinate for x
+        int gy = (int)std::floor(y); //get the integer grid coordinate for y
+
+        if ((gx + gy) % 2 == 0) {
+            //accepted: even sum means black square
+            double nx = (noise > 0.0) ? noise_dist(rng) : 0.0;
+            double ny = (noise > 0.0) ? noise_dist(rng) : 0.0;
+            points(accepted, 0) = x + nx;
+            points(accepted, 1) = y + ny;
+            accepted++;
+        }
+        //else: rejected, loop again without incrementing accepted; white square, so we skip it and try again
+    }
+
+    return points;
+}
 }
 
