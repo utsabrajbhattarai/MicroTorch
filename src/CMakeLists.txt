@@ -7,6 +7,7 @@
 add_library(microtorch STATIC
     # ---- core ----
     Tensor.cpp
+    gradient_check.cpp #for checking the gradients of the ops, used in tests
 
     # ---- data ----
     data/toy_data.cpp       #for diffusion model, toy data generation
