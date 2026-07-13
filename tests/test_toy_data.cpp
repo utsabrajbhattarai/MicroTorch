@@ -55,3 +55,18 @@ TEST_CASE("make_infinity points stay within expected bounds", "[toy_data]") {
         REQUIRE(pts(i, 1) <= 1.0 + 1e-9);
     }
 }
+
+TEST_CASE("make_concentric_circles returns correct shape", "[toy_data]") {
+    Eigen::MatrixXd pts = make_concentric_circles(500);
+    REQUIRE(pts.rows() == 500);
+    REQUIRE(pts.cols() == 2);
+}
+
+TEST_CASE("make_concentric_circles points sit on expected radii", "[toy_data]") {
+    Eigen::MatrixXd pts = make_concentric_circles(500, 0.0);  //noise=0 for exact radius
+    for (int i = 0; i < pts.rows(); ++i) {
+        double dist = std::sqrt(pts(i, 0)*pts(i, 0) + pts(i, 1)*pts(i, 1));
+        bool matches_known_radius = (std::abs(dist - 0.7) < 1e-9) || (std::abs(dist - 1.5) < 1e-9);
+        REQUIRE(matches_known_radius);
+    }
+}

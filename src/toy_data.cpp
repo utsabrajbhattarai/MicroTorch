@@ -87,5 +87,27 @@ Eigen::MatrixXd make_infinity(int n, double noise) {
     return points;
 }
 
+//concentric circles
+Eigen::MatrixXd make_concentric_circles(int n, double noise) {
+    Eigen::MatrixXd points(n, 2);
+    std::vector<double> radii = {0.7, 1.5};  //two rings
+    std::mt19937 rng(42);
+    std::uniform_real_distribution<double> angle_dist(0.0, 2 * M_PI); //angle distribution for the circles
+    std::normal_distribution<double> noise_dist(0.0, noise > 0.0 ? noise : 1.0); //noise distribution
+
+    for (int i = 0; i < n; ++i) {
+        double r = radii[i % radii.size()];  //cycle through radii list
+        double angle = angle_dist(rng);
+        double x = r * std::cos(angle); //formula for x coordinate of the concentric circles
+        double y = r * std::sin(angle); //formula for y coordinate of the concentric circles
+
+        double nx = (noise > 0.0) ? noise_dist(rng) : 0.0;
+        double ny = (noise > 0.0) ? noise_dist(rng) : 0.0;
+        points(i, 0) = x + nx; //add noise to x coordinate
+        points(i, 1) = y + ny; //add noise to y coordinate
+    }
+
+    return points;
+}
 }
 
