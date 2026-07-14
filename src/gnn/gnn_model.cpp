@@ -36,4 +36,12 @@ namespace microtorch {
         b_out_ = make_tensor(Eigen::MatrixXd::Zero(1, num_classes));//biases for the classifier layer
     }
 
+    //parameters function(): for a vector which is directly passable to the optimizer or this function just vectorizes it
+    std::vector<TensorPtr> GNNModel::parameters(){
+        return { W1_, b1_,
+                W2_, b2_,
+                W_out_, b_out_
+                };
+    }
+
 }  // namespace microtorch
