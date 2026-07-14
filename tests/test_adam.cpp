@@ -19,7 +19,3 @@ TEST_CASE("Adam optimizer forward is correct", "[adam]") { //minimize f(x) = x^2
 
     REQUIRE(x->data(0, 0) == Catch::Approx(0.0).margin(1e-3)); //After 200 steps, x should be very close to 0.0, since we are minimizing x^2. The margin is almost zero, but not exactly zero, to account for numerical precision errors.
 }
-
-TEST_CASE("Adam optimizer gradient check", "[adam][gradcheck]") {
-    SKIP("gradcheck harness not yet available for optimizers");
-}

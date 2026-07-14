@@ -2,7 +2,7 @@
 
 namespace microtorch {
 
-Adam::Adam(std::vector<TensorPtr> params, double lr,
+Adam::Adam(const std::vector<TensorPtr> &params, double lr,
            double beta1, double beta2, double eps)
     : params_(params), lr_(lr), beta1_(beta1), beta2_(beta2), eps_(eps), t_(0)
 {

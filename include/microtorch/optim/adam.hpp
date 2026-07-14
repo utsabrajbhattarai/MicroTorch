@@ -7,8 +7,8 @@ namespace microtorch {
 
 class Adam {
 public:
-    Adam(std::vector<TensorPtr> params, double lr, //stores actual tensor parameters to be optimized, learning rate, beta1, beta2, epsilon
-         double beta1 = 0.9, double beta2 = 0.999, double eps = 1e-8);
+    Adam(const std::vector<TensorPtr>& params, double lr, //stores actual tensor parameters to be optimized, learning rate, beta1, beta2, epsilon
+     double beta1 = 0.9, double beta2 = 0.999, double eps = 1e-8);
 
     void step();
     void zero_grad();
