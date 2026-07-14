@@ -22,7 +22,18 @@ namespace microtorch {
         }
 
         return weights;
+    }
 
+
+    //constructor:
+    GNNModel::GNNModel(int in_features, int hidden, int num_classes){
+        W1_ = make_tensor(he_init(in_features, hidden));    //weights for the first layer  ||  input-> features-features || output-> first GNN layer features
+        W2_ = make_tensor(he_init(hidden, hidden));         //weights for the hidden layer ||  input-> first GNN layer features || output-> second GNN layer features
+        W_out_ = make_tensor(he_init(hidden, num_classes)); //weights for the classifier layer||input->second GNN layer features|| output-> output classifier class
+
+        b1_ = make_tensor(Eigen::MatrixXd::Zero(1, hidden)); //biases for the first layer
+        b2_ = make_tensor(Eigen::MatrixXd::Zero(1, hidden));//biases for the second layer
+        b_out_ = make_tensor(Eigen::MatrixXd::Zero(1, num_classes));//biases for the classifier layer
     }
 
 }  // namespace microtorch
