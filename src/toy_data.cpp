@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES
 #include "microtorch/toy_data.hpp" //header file from the include directory
 #include <cmath>
 #include <random>
