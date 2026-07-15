@@ -27,7 +27,7 @@ class GNNModel{
 
 
         //to store the learnable tensors, for the optimizer to handle all the backwards of 
-        std::vector<TensorPtr> parameters;
+        std::vector<TensorPtr> parameters();
 };
 
 
