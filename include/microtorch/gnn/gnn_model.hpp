@@ -2,7 +2,7 @@
 #include "microtorch/Tensor.hpp"
 #include <Eigen/SparseCore>
 #include <vector>
-
+#include "microtorch/ops.hpp"
 
 namespace microtorch {
 
