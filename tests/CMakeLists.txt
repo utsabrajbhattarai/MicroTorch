@@ -12,7 +12,11 @@ FetchContent_MakeAvailable(Catch2)
 # you add an op to src/CMakeLists.txt -- this list should always mirror
 # that one 1:1.
 add_executable(microtorch_tests
+
+    #main tensor test
     test_tensor.cpp
+
+    #operation tests
     test_matmul.cpp
     test_broadcast_add.cpp
     test_relu.cpp
@@ -20,12 +24,20 @@ add_executable(microtorch_tests
     test_reduction.cpp
     test_mse_loss.cpp
     test_softmax_cross_entropy.cpp
+
+    #optimizer tests
     test_sgd.cpp
     test_adam.cpp
-    test_gradcheck_harness.cpp
-    test_toy_data.cpp
-    test_gradcheck_harness.cpp   # the harness itself gets its own test
+    
+    # the harness itself gets its own test
+    test_gradcheck_harness.cpp   
+
+    #data loader/generator tests
     test_dataload.cpp
+    test_toy_data.cpp
+
+    #gnn tests:
+    test_gnn_model.cpp
 )
 
 target_link_libraries(microtorch_tests
