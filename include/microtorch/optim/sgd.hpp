@@ -4,12 +4,19 @@
 
 namespace microtorch {
 
-// SGD -- dead simple, no per-parameter state needed beyond the gradient
-// already stored on each Tensor.
-// TODO: define once Tensor's parameter-list convention is settled.
-class SGD {
-public:
-    // TODO: constructor (params, learning_rate), step(), zero_grad().
-};
+    // defining sgd class which stores pointer to tensor class and learning rate 
+    class SGD{
+        public:
+        SGD(std::vector<TensorPtr> params, double lr);
+        void step();   // each step of updating weight
+        void zero_grad();   //setting gradient to zero
 
-}  // namespace microtorch
+        private:
+        std::vector<TensorPtr> params_;
+        double lr_;
+    };
+
+    
+}
+
+ 
