@@ -180,8 +180,15 @@ vector<pair<int,int>> load_edges(const string& path, const unordered_map<long lo
         long long txid1 = stoll(txid1_text); // convert to number
         long long txid2 = stoll(txid2_text); // convert to number
 
-        int row1 = txid_to_row.at(txid1); // get the row index of txid1 from the unordered_map
-        int row2 = txid_to_row.at(txid2); // get the row index of txid2 from the unordered_map
+        auto it1 = txid_to_row.find(txid1); //returns an interator to entry or .end() if not found
+        auto it2 = txid_to_row.find(txid2);
+        if (it1 == txid_to_row.end() || it2 == txid_to_row.end()) {
+            continue;   //one endpoint isn't a known node, skip this edge
+        }
+        int row1 = it1->second; //if none edge is missing pulling the row index
+        int row2 = it2->second;
+        edges.push_back({row1, row2});
+
 
         // 4. push_back a pair {row1, row2} into edges
         edges.push_back({row1, row2});
