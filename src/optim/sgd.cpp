@@ -2,7 +2,7 @@
 
 namespace microtorch {
 
-    SGD :: SGD(std::vector<TensorPtr> params, double lr)
+    SGD :: SGD(const std::vector<TensorPtr> &params, double lr)
     {
         params_ = params;   //setting values from constructor to other variables
         lr_ = lr;
