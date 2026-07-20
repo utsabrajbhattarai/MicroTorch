@@ -7,6 +7,6 @@
 #include <iostream> 
 
 int main() {
-    // TODO: load Elliptic data, build model, train, evaluate, ablate.
+    
     return 0;
 }
