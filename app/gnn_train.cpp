@@ -7,6 +7,8 @@
 #include "microtorch/optim/adam.hpp"
 #include <iostream>
 
+const int EPOCH_N = 500;  
+
 using namespace microtorch;
 
 int main() {
@@ -31,6 +33,20 @@ int main() {
     //3) Model and Optimizer
     GNNModel model(F, 128, 2);
     Adam opt(model.parameters(),0.01);  
+
+    for (int epoch = 0; epoch<EPOCH_N; epoch++){
+        
+        TensorPtr logits = model.forward(data.A, X); //creating logits
+        TensorPtr loss   = softmax_cross_entropy(logits, data.Y, mask, num_labeled); //finding the loss
+        opt.zero_grad();    //reseting the previous grads to zero cause there's a += in each grad which may cause carry effect
+        loss->backward();   //backwarding through the graph
+        opt.step();         //updating parameter/ a step in optimization
+        if(epoch%10 == 0){
+            std::cout << "epoch " << epoch << "  loss " << loss->data(0,0) << std::endl;
+        }
+
+
+    }
 
     return 0;
 }
