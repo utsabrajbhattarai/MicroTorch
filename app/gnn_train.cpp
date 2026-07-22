@@ -17,9 +17,20 @@ int main() {
     "data/elliptic_bitcoin_dataset/elliptic_txs_classes.csv",   //labels file
     "data/elliptic_bitcoin_dataset/elliptic_txs_edgelist.csv"   //edgelist file
     );
-    int N = data.X.rows();
-    int F = data.X.cols();
+    int N = data.X.rows();  //no. of rows
+    int F = data.X.cols();  //no. of feats
     TensorPtr X = make_tensor(data.X);
+
+
+    //2) Masking labelled and unlabelled
+    Eigen::MatrixXd mask = Eigen::MatrixXd::Zero(N,1);  //creating masked mapping for labelled and unlablled rows
+    for (int r: data.labeled_rows) mask(r,0) = 1.0;     //looping through labelled rows and changing their mask to 1
+    double num_labeled = data.labeled_rows.size();      //number of labelled rows
+
+
+    //3) Model and Optimizer
+    GNNModel model(F, 128, 2);
+    Adam opt(model.parameters(),0.01);  
 
     return 0;
 }
