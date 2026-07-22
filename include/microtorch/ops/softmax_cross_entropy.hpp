@@ -8,6 +8,6 @@ namespace microtorch {
 //overloaded to ensure masked and unmasked can be applied to a same function: more of it in actual src/*.cpp file
 
 TensorPtr softmax_cross_entropy(const TensorPtr& logits, const Eigen::MatrixXd& targets);
-TensorPTr softmax_cross_entropy(const TensorPtr& logits, const Eigen::MatrixXd& targets, const Eigen::MatrixXd& mask, double num_labeled); //masked version for loss with no classes
+TensorPtr softmax_cross_entropy(const TensorPtr& logits, const Eigen::MatrixXd& targets, const Eigen::MatrixXd& mask, double num_labeled); //masked version for loss with no classes
 
 }  // namespace microtorch
