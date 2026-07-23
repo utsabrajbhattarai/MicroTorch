@@ -7,7 +7,7 @@
 #include "microtorch/optim/adam.hpp"
 #include <iostream>
 
-const int EPOCH_N = 500;  
+const int EPOCH_N = 100;  
 
 using namespace microtorch;
 
@@ -41,7 +41,7 @@ int main() {
         opt.zero_grad();    //reseting the previous grads to zero cause there's a += in each grad which may cause carry effect
         loss->backward();   //backwarding through the graph
         opt.step();         //updating parameter/ a step in optimization
-        if(epoch%10 == 0){
+        if(epoch%5 == 0){
             std::cout << "epoch " << epoch << "  loss " << loss->data(0,0) << std::endl;
         }
 

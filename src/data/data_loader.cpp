@@ -283,6 +283,20 @@ EllipticData load_elliptic(const string& features_path, const string& classes_pa
     data.A.setFromTriplets(triplets.begin(), triplets.end()); // setting the adjacency matrix denoted by A according to triplets u just made
     data.A.makeCompressed();  // ignore all 0 values(if a node hasnot transacted with other node then dont store in the sparse matrix)
 
+    //SYMMETRIC NORMALIZATION:
+    // D^(-1/2) * A * D^(-1/2)
+    //without normalization features sum up so a node with lots of neighbours features explode and cause a huge error:
+    Eigen::VectorXd deg = data.A * Eigen::VectorXd::Ones(N);   //row sums = degrees (how many connection a node has including its self loop)
+
+    Eigen::VectorXd dinv(N);
+    for (int i = 0; i < N; ++i){
+        dinv(i) = (deg(i) > 0.0) ? 1.0 / std::sqrt(deg(i)) : 0.0;   //guard divide by 0 if node is isolated(although we have self loop/node just a prevention)
+    }
+
+    data.A = dinv.asDiagonal() * data.A * dinv.asDiagonal();    //the normalization part as a diagonal vector for efficient computing
+    data.A.makeCompressed();
+
+
     return data;
 
 
