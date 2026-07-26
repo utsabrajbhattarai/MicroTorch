@@ -35,7 +35,7 @@ int main() {
             licit_rows.push_back(r);
         }
     }
-    std::mt19937 generator(95);
+    std::mt19937 generator(95); //a seeded generator 
     std::shuffle(illicit_rows.begin(), illicit_rows.end(), generator); //shuffling illicit rows
     std::shuffle(licit_rows.begin(), licit_rows.end(), generator); //shuffling licit rows
 
@@ -57,10 +57,6 @@ int main() {
     //           << (100.0 * illicit_test / test_rows.size()) << "%)\n";
 
     //2) Masking labelled and unlabelled
-    Eigen::MatrixXd mask = Eigen::MatrixXd::Zero(N,1);  
-    for (int r: data.labeled_rows) mask(r,0) = 1.0;     //looping through labelled rows and changing their mask to 1
-    double num_labeled = data.labeled_rows.size();      //number of labelled rows
-
     Eigen::MatrixXd train_mask = Eigen::MatrixXd::Zero(N, 1); //creating masked mapping for labelled and unlablled rows of train set
     for (int r : train_rows) train_mask(r, 0) = 1.0;    //train_mask only trains the masked row 
     double num_train = train_rows.size();
@@ -74,16 +70,23 @@ int main() {
     GNNModel model(F, 128, 2);
     Adam opt(model.parameters(),0.01);  
 
-    for (int epoch = 0; epoch<EPOCH_N; epoch++){
+    for (int epoch = 0; epoch<=EPOCH_N; epoch++){
         
+        // forward through all of train set, loss on train mask, backward, step(update gradient)
         TensorPtr logits = model.forward(data.A, X); //creating logits
-        TensorPtr loss   = softmax_cross_entropy(logits, data.Y, mask, num_labeled); //finding the loss
+        TensorPtr train_loss   = softmax_cross_entropy(logits, data.Y, train_mask, num_train); //finding the loss
         opt.zero_grad();    //reseting the previous grads to zero cause there's a += in each grad which may cause carry effect
-        loss->backward();   //backwarding through the graph
+        train_loss->backward();   //backwarding through the graph
         opt.step();         //updating parameter/ a step in optimization
-        if(epoch%5 == 0){
-            std::cout << "epoch " << epoch << "  loss " << loss->data(0,0) << std::endl;
-        }
+
+
+        //evaluate test loss from same logits with no backward or step
+        if (epoch % 10 == 0) {
+        TensorPtr test_loss = softmax_cross_entropy(logits, data.Y, test_mask, num_test);
+        std::cout << "epoch " << epoch
+                  << "  train_loss " << train_loss->data(0,0)
+                  << "  test_loss "  << test_loss->data(0,0) << std::endl;
+    }
 
 
     }
