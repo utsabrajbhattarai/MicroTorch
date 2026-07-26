@@ -153,4 +153,24 @@ double compute_auroc(const std::vector<double>& scores, const std::vector<bool>&
     );
 
 
+
+    //assigning ranks and summing the illicit ranks:
+    int i = 1, n_illicit = 0, n_licit =0 ;
+    double R = 0.0;   //a running sum of illicit ranks
+    for (const std::pair<double,bool>& x : score_pair){
+        if( x.second ){
+            R += static_cast<int>(i);  //ranking running sum
+            n_illicit++;    //number of illicit case
+        }
+        else{
+            n_licit++;  //numer of licit case
+        }
+        i++;
+    }
+
+    //applying the Mann-Whitney U statistic formula for calculaitng aucroc score:
+    double AUROC = (R - static_cast<double>(n_illicit) * (static_cast<double>(n_illicit) + 1) / 2.0) / (static_cast<double>(n_illicit) * n_licit);
+
+    return AUROC;
+
 }
