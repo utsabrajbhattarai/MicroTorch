@@ -108,6 +108,10 @@ int main() {
     //5) Evaluation Metrics
     int TP = 0, FP = 0, TN = 0, FN = 0; //evaluation matrix
     TensorPtr final_logits = model.forward(data.A, X);   //final forward for evaluation purposes
+
+    std::vector<double> scores; //logits2-logits1 scores
+    std::vector<bool> is_illicit; //calculates if its illicit or not
+
     for (int r : test_rows) {
         bool pred_illicit  = final_logits->data(r, 1) > final_logits->data(r, 0);   //predicted positives (softmax is monotonics so logits is good enough)
         bool truth_illicit = (data.Y(r, 1) == 1.0);     //actual positives
@@ -116,6 +120,10 @@ int main() {
         else if ( pred_illicit && !truth_illicit) FP++;
         else if (!pred_illicit && !truth_illicit) TN++;
         else                                      FN++;
+
+        //for auroc function:
+        scores.push_back(final_logits->data(r, 1) - final_logits->data(r, 0));  //illicit-ness/ score of how illicit it is
+        is_illicit.push_back(data.Y(r, 1) == 1.0);  //illicit or not bool
     }
     //metrics used: (conditions are just for sake of guarding division by 0)
     double precision = (TP + FP > 0) ? (double)TP / (TP + FP) : 0.0; //out of all guessed illicit how many were True?
@@ -123,12 +131,14 @@ int main() {
     double f1        = (precision + recall > 0)
                     ? 2 * precision * recall / (precision + recall) : 0.0;  //way to calculate f1 score (harmonic mean of precision and recall)
     double accuracy  = (double)(TP + TN) / test_rows.size();
+    double auroc = compute_auroc(scores, is_illicit);   //calling auroc function
 
     //printing the metrices:
     std::cout << "\n=== Test metrics ===\n";
     std::cout << "TP=" << TP << " FP=" << FP << " TN=" << TN << " FN=" << FN << "\n";
     std::cout << "precision " << precision << "  recall " << recall
             << "  F1 " << f1 << "  accuracy " << accuracy << "\n";
+    std::cout << "AUROC " << auroc << "\n";
 
     return 0;
     
