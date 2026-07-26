@@ -13,6 +13,8 @@ const int EPOCH_N = 100;
 
 using namespace microtorch;
 
+double compute_auroc(const std::vector<double>& scores, const std::vector<bool>& is_illicit); //function that returns AUROC score
+
 int main() {
 
 //*************************************************************************************// 
@@ -129,4 +131,26 @@ int main() {
             << "  F1 " << f1 << "  accuracy " << accuracy << "\n";
 
     return 0;
+    
+}
+
+
+
+//complete auroc score:
+double compute_auroc(const std::vector<double>& scores, const std::vector<bool>& is_illicit){
+    //pairing each score and is label:
+    std::vector<std::pair<double,bool>> score_pair;
+
+    for( size_t i =0; i<scores.size(); i++){
+        score_pair.emplace_back(scores[i], is_illicit[i]);
+    }
+
+    //using sort lambda function to sort scores based on .first(score)
+    std::sort(score_pair.begin(), score_pair.end(),[]
+              (const auto& a, const auto &b){
+                return a.first < b.first;
+              }
+    );
+
+
 }
