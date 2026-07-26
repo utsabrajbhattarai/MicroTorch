@@ -14,7 +14,8 @@ const int EPOCH_N = 100;
 using namespace microtorch;
 
 int main() {
-    
+
+//*************************************************************************************// 
     //1.0.0)load the data:
     EllipticData data = load_elliptic(
     "data/elliptic_bitcoin_dataset/elliptic_txs_features.csv",  //features file
@@ -56,6 +57,9 @@ int main() {
     // std::cout << "test:  " << test_rows.size() << " nodes, " << illicit_test << " illicit ("
     //           << (100.0 * illicit_test / test_rows.size()) << "%)\n";
 
+
+
+//*************************************************************************************//
     //2) Masking labelled and unlabelled
     Eigen::MatrixXd train_mask = Eigen::MatrixXd::Zero(N, 1); //creating masked mapping for labelled and unlablled rows of train set
     for (int r : train_rows) train_mask(r, 0) = 1.0;    //train_mask only trains the masked row 
@@ -66,10 +70,17 @@ int main() {
     double num_test = test_rows.size();
 
 
+
+
+//*************************************************************************************//
     //3) Model and Optimizer
     GNNModel model(F, 128, 2);
     Adam opt(model.parameters(),0.01);  
 
+
+
+//*************************************************************************************//
+    //4) Training Loop
     for (int epoch = 0; epoch<=EPOCH_N; epoch++){
         
         // forward through all of train set, loss on train mask, backward, step(update gradient)
@@ -86,10 +97,36 @@ int main() {
         std::cout << "epoch " << epoch
                   << "  train_loss " << train_loss->data(0,0)
                   << "  test_loss "  << test_loss->data(0,0) << std::endl;
-    }
+        }
 
 
     }
+
+//*************************************************************************************//
+    //5) Evaluation Metrics
+    int TP = 0, FP = 0, TN = 0, FN = 0; //evaluation matrix
+    TensorPtr final_logits = model.forward(data.A, X);   //final forward for evaluation purposes
+    for (int r : test_rows) {
+        bool pred_illicit  = final_logits->data(r, 1) > final_logits->data(r, 0);   //predicted positives (softmax is monotonics so logits is good enough)
+        bool truth_illicit = (data.Y(r, 1) == 1.0);     //actual positives
+
+        if      ( pred_illicit &&  truth_illicit) TP++;
+        else if ( pred_illicit && !truth_illicit) FP++;
+        else if (!pred_illicit && !truth_illicit) TN++;
+        else                                      FN++;
+    }
+    //metrics used: (conditions are just for sake of guarding division by 0)
+    double precision = (TP + FP > 0) ? (double)TP / (TP + FP) : 0.0; //out of all guessed illicit how many were True?
+    double recall    = (TP + FN > 0) ? (double)TP / (TP + FN) : 0.0;  //out of all true illicit how many were guessed?
+    double f1        = (precision + recall > 0)
+                    ? 2 * precision * recall / (precision + recall) : 0.0;  //way to calculate f1 score (harmonic mean of precision and recall)
+    double accuracy  = (double)(TP + TN) / test_rows.size();
+
+    //printing the metrices:
+    std::cout << "\n=== Test metrics ===\n";
+    std::cout << "TP=" << TP << " FP=" << FP << " TN=" << TN << " FN=" << FN << "\n";
+    std::cout << "precision " << precision << "  recall " << recall
+            << "  F1 " << f1 << "  accuracy " << accuracy << "\n";
 
     return 0;
 }
