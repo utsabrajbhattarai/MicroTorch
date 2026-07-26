@@ -5,7 +5,9 @@
 #include "microtorch/ops.hpp"
 #include "microtorch/data/data_loader.hpp"
 #include "microtorch/optim/adam.hpp"
+#include <algorithm>
 #include <iostream>
+#include <random>
 
 const int EPOCH_N = 100;  
 
@@ -13,7 +15,7 @@ using namespace microtorch;
 
 int main() {
     
-    //1)load the data:
+    //1.0.0)load the data:
     EllipticData data = load_elliptic(
     "data/elliptic_bitcoin_dataset/elliptic_txs_features.csv",  //features file
     "data/elliptic_bitcoin_dataset/elliptic_txs_classes.csv",   //labels file
@@ -23,11 +25,49 @@ int main() {
     int F = data.X.cols();  //no. of feats
     TensorPtr X = make_tensor(data.X);
 
+    //1.0.1) Startified Split (due to class imbalance)
+    std::vector<int> illicit_rows, licit_rows; //storing licit and illicit rows independently
+    for(int r : data.labeled_rows) {
+        if (data.Y(r,1) == 1.0){
+            illicit_rows.push_back(r);
+        }
+        else{
+            licit_rows.push_back(r);
+        }
+    }
+    std::mt19937 generator(95);
+    std::shuffle(illicit_rows.begin(), illicit_rows.end(), generator); //shuffling illicit rows
+    std::shuffle(licit_rows.begin(), licit_rows.end(), generator); //shuffling licit rows
+
+    std::vector<int> train_rows, test_rows; //test rows and test rows 80/20 split
+
+    int illicit_train = static_cast<int>(0.8 * illicit_rows.size()); //size of illicit train
+    train_rows.insert(train_rows.end(), illicit_rows.begin(), illicit_rows.begin() + illicit_train); //inserting illicit train rows
+    test_rows.insert (test_rows.end(),  illicit_rows.begin() + illicit_train, illicit_rows.end()); //inserting illicit test rows
+
+    int licit_train = static_cast<int>(0.8 * licit_rows.size()); //size of licit train 
+    train_rows.insert(train_rows.end(), licit_rows.begin(), licit_rows.begin() + licit_train); 
+    test_rows.insert (test_rows.end(),  licit_rows.begin() + licit_train, licit_rows.end());
+
+    //sanity check for checking a balanced split:
+    // int illicit_test = illicit_rows.size() - illicit_train;
+    // std::cout << "train: " << train_rows.size() << " nodes, " << illicit_train << " illicit ("
+    //           << (100.0 * illicit_train / train_rows.size()) << "%)\n";
+    // std::cout << "test:  " << test_rows.size() << " nodes, " << illicit_test << " illicit ("
+    //           << (100.0 * illicit_test / test_rows.size()) << "%)\n";
 
     //2) Masking labelled and unlabelled
-    Eigen::MatrixXd mask = Eigen::MatrixXd::Zero(N,1);  //creating masked mapping for labelled and unlablled rows
+    Eigen::MatrixXd mask = Eigen::MatrixXd::Zero(N,1);  
     for (int r: data.labeled_rows) mask(r,0) = 1.0;     //looping through labelled rows and changing their mask to 1
     double num_labeled = data.labeled_rows.size();      //number of labelled rows
+
+    Eigen::MatrixXd train_mask = Eigen::MatrixXd::Zero(N, 1); //creating masked mapping for labelled and unlablled rows of train set
+    for (int r : train_rows) train_mask(r, 0) = 1.0;    //train_mask only trains the masked row 
+    double num_train = train_rows.size();
+
+    Eigen::MatrixXd test_mask = Eigen::MatrixXd::Zero(N, 1); //creating masked mapping for labelled and unlablled rows of test set
+    for (int r : test_rows) test_mask(r, 0) = 1.0;  //so to calculate loss only on test nodes
+    double num_test = test_rows.size();
 
 
     //3) Model and Optimizer
