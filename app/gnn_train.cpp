@@ -133,9 +133,15 @@ double run_experiment(bool use_graph, const EllipticData& data, const TensorPtr&
     GNNModel model(F, 128, 2);
     Adam opt(model.parameters(), 0.01);
 
+    //GNN or MLP?
+    std::string current_model = (use_graph)?"GNN":"MLP";
+
 
  //*************************************************************************************//
     //4) Training Loop
+
+    std::cout << "\n\n\n========" << current_model << "=======\n\n";
+
     for (int epoch = 0; epoch<=EPOCH_N; epoch++){
         
         // forward through all of train set, loss on train mask, backward, step(update gradient)
@@ -186,11 +192,9 @@ double run_experiment(bool use_graph, const EllipticData& data, const TensorPtr&
     double accuracy  = (double)(TP + TN) / test_rows.size();
     double auroc = compute_auroc(scores, is_illicit);   //calling auroc function
 
-    //GNN or MLP?
-    std::string model = (use_graph)?"GNN":"MLP";
+
 
     //printing the metrices:
-    std::cout << "\n\n\n========" << model << "=======\n\n"
     std::cout << "\n=== Test metrics ===\n";
     std::cout << "TP=" << TP << " FP=" << FP << " TN=" << TN << " FN=" << FN << "\n";
     std::cout << "precision " << precision << "  recall " << recall
