@@ -33,7 +33,7 @@ void Adam::step() {
 
 void Adam::zero_grad() { //resets every parameter's gradient to zero so that no leak in gradients from previous back-passes occurs.
     for (auto& p : params_) {
-        p->grad.setZero();
+        p->zero_grad();  //set gradient to zero for replacement with new value
     }
 }
 
