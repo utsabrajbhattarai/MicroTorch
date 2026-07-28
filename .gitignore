@@ -37,3 +37,7 @@ compile_commands.json
 # ---- macOS junk --------------------------------------------------------
 .DS_Store
 __MACOSX/
+plot_*.py
+*.png
+generate_dummy_log.py
+training_log.csv

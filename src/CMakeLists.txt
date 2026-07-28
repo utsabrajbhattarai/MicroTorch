@@ -9,6 +9,7 @@ add_library(microtorch STATIC
     Tensor.cpp
     gradient_check.cpp #for checking the gradients of the ops, used in tests
 
+
     # ---- data ----
     data/toy_data.cpp       #for diffusion model, toy data generation
     data/data_loader.cpp    #for GNN model data loading from csv
@@ -25,6 +26,9 @@ add_library(microtorch STATIC
     # ---- optim/ ----
     optim/sgd.cpp
     optim/adam.cpp
+    
+    # ---- logger/ ----
+    logger.cpp 
 
     # ---- gnn/ : node-classification model on top of the ops above ----
     gnn/gnn_model.cpp
