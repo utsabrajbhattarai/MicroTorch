@@ -1,4 +1,4 @@
-#include "microtorch/logger.hpp"
+#include "microtorch/logger.hpp" //header file for logger
 #include <fstream> //for file operations
 
 namespace microtorch {
