@@ -25,6 +25,9 @@ add_library(microtorch STATIC
     # ---- optim/ ----
     optim/sgd.cpp
     optim/adam.cpp
+    
+    # ---- logger/ ----
+    logger.cpp 
 
     # ---- gnn/ : node-classification model on top of the ops above ----
     gnn/gnn_model.cpp
