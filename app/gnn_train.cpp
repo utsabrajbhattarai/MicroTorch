@@ -19,7 +19,7 @@ double compute_auroc(const std::vector<double>& scores, const std::vector<bool>&
 //everything else (split, masks, epochs, init) is identical between the two,
 //so the metric difference is purely the contribution of the graph structure ie the boolean value of use_graph whose change can be seen in the forward function
 void run_experiment(bool use_graph, const EllipticData& data, const TensorPtr& X, const Eigen::MatrixXd& train_mask, double num_train,
-                    const Eigen::MatrixXd& test_mask,  double num_test, const std::vector<int>& test_rows, int F)
+                    const Eigen::MatrixXd& test_mask,  double num_test, const std::vector<int>& test_rows, int F);
 
 int main() {
 
@@ -81,18 +81,38 @@ int main() {
 
 
 //*************************************************************************************//
-    //3) Model and Optimizer
-    GNNModel model(F, 128, 2);
-    Adam opt(model.parameters(),0.01);  
+//3-5 inside run_experiment
+    std::cout << "\n########## GNN (graph ON) ##########\n";
+    run_experiment(true,  data, X, train_mask, num_train, test_mask, num_test, test_rows, F);
 
+    std::cout << "\n########## MLP (graph OFF) ##########\n";
+    run_experiment(false, data, X, train_mask, num_train, test_mask, num_test, test_rows, F);
+    return 0;
+    
+}
+
+
+
+
+//STEP 3 THROUGH 5:
+
+
+void run_experiment(bool use_graph, const EllipticData& data, const TensorPtr& X, const Eigen::MatrixXd& train_mask, double num_train,
+                    const Eigen::MatrixXd& test_mask,  double num_test, const std::vector<int>& test_rows, int F){
 
 
 //*************************************************************************************//
+    //3) Model and Optimizer
+    GNNModel model(F, 128, 2);
+    Adam opt(model.parameters(), 0.01);
+
+
+ //*************************************************************************************//
     //4) Training Loop
     for (int epoch = 0; epoch<=EPOCH_N; epoch++){
         
         // forward through all of train set, loss on train mask, backward, step(update gradient)
-        TensorPtr logits = model.forward(data.A, X); //creating logits
+        TensorPtr logits = model.forward(data.A, X, use_graph); //creating logits
         TensorPtr train_loss   = softmax_cross_entropy(logits, data.Y, train_mask, num_train); //finding the loss
         opt.zero_grad();    //reseting the previous grads to zero cause there's a += in each grad which may cause carry effect
         train_loss->backward();   //backwarding through the graph
@@ -113,7 +133,7 @@ int main() {
 //*************************************************************************************//
     //5) Evaluation Metrics
     int TP = 0, FP = 0, TN = 0, FN = 0; //evaluation matrix
-    TensorPtr final_logits = model.forward(data.A, X);   //final forward for evaluation purposes
+    TensorPtr final_logits = model.forward(data.A, X, use_graph);   //final forward for evaluation purposes
 
     std::vector<double> scores; //logits2-logits1 scores
     std::vector<bool> is_illicit; //calculates if its illicit or not
@@ -145,13 +165,16 @@ int main() {
     std::cout << "precision " << precision << "  recall " << recall
             << "  F1 " << f1 << "  accuracy " << accuracy << "\n";
     std::cout << "AUROC " << auroc << "\n";
-
-    return 0;
-    
 }
 
 
 
+
+
+
+
+
+//*************************************************************************************//
 //complete auroc score:
 double compute_auroc(const std::vector<double>& scores, const std::vector<bool>& is_illicit){
     //pairing each score and is label:
