@@ -15,6 +15,12 @@ using namespace microtorch;
 
 double compute_auroc(const std::vector<double>& scores, const std::vector<bool>& is_illicit); //function that returns AUROC score
 
+//runs one full train + evaluate cycle || use_graph = true is the GNN || use_graph = false disables neighbor_aggregation, making it a plain MLP.
+//everything else (split, masks, epochs, init) is identical between the two,
+//so the metric difference is purely the contribution of the graph structure ie the boolean value of use_graph whose change can be seen in the forward function
+void run_experiment(bool use_graph, const EllipticData& data, const TensorPtr& X, const Eigen::MatrixXd& train_mask, double num_train,
+                    const Eigen::MatrixXd& test_mask,  double num_test, const std::vector<int>& test_rows, int F)
+
 int main() {
 
 //*************************************************************************************// 

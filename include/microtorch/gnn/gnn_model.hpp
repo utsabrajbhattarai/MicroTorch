@@ -23,7 +23,8 @@ class GNNModel{
 
         //the full proof forward pass: consists of 2 GNN layers and a final classifier layer to generate logits
         //expected to return raw logits of shape (N, num_classes), softmax to be done seperately
-        TensorPtr forward(const Eigen::SparseMatrix<double> & A, const TensorPtr& X);
+        //use graph is for ablation(GNN Vs MLP)
+        TensorPtr forward(const Eigen::SparseMatrix<double> & A, const TensorPtr& X, bool use_graph = true);
 
 
         //to store the learnable tensors, for the optimizer to handle all the backwards of 

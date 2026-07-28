@@ -48,17 +48,17 @@ namespace microtorch {
 
     //Forward function::
 
-    TensorPtr GNNModel::forward(const Eigen::SparseMatrix<double>& A, const TensorPtr& X){
+    TensorPtr GNNModel::forward(const Eigen::SparseMatrix<double>& A, const TensorPtr& X, bool use_graph){
 
         //Layer1:
-        TensorPtr a1 = neighbor_aggregation(A,X);   //sparse matmul a1.shape = (N,166)
+        TensorPtr a1 = use_graph? neighbor_aggregation(A,X) : X;   //sparse matmul a1.shape = (N,166) || if use-graph is false ie. ablation MLP mode we dont use neighbout aggregation
         TensorPtr z1 = matmul(a1, W1_);             //linear transform to hidden width  z1.shape = (N,128) || Also note that must be in this order for shape N,128
         TensorPtr preout1 = broadcast_add(z1, b1_);      // adding biases same shape as z1
         TensorPtr out1 = relu(preout1);              //adding non-linearity (N,128)
 
 
         //Layer2:
-        TensorPtr a2 = neighbor_aggregation(A,out1);   //sparse matmul a2.shape = (N,166) || aggregating the hidden features
+        TensorPtr a2 = use_graph? neighbor_aggregation(A,out1) : out1;   //sparse matmul a2.shape = (N,166) || aggregating the hidden features
         TensorPtr z2 = matmul(a2, W2_);             //linear transform to hidden width  z2.shape = (N,128)
         TensorPtr preout2 = broadcast_add(z2, b2_);      // adding biases same shape as z2
         TensorPtr out2 = relu(preout2);              //adding non-linearity (N,128)
