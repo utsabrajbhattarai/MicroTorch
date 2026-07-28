@@ -8,23 +8,28 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
+#include <string>
 
-const int EPOCH_N = 100;  
+const int EPOCH_N = 70;  
 
 using namespace microtorch;
 
 double compute_auroc(const std::vector<double>& scores, const std::vector<bool>& is_illicit); //function that returns AUROC score
 
+
+//runs one seed: split with this seed to train GNN and MLP (for the purpose of analyzing variation of loss with choice of seed (hyperparameter tuning))
+void run_seed(unsigned seed, const EllipticData& data, const TensorPtr& X, int N, int F, double& gnn_auroc, double& mlp_auroc);
+
 //runs one full train + evaluate cycle || use_graph = true is the GNN || use_graph = false disables neighbor_aggregation, making it a plain MLP.
 //everything else (split, masks, epochs, init) is identical between the two,
 //so the metric difference is purely the contribution of the graph structure ie the boolean value of use_graph whose change can be seen in the forward function
-void run_experiment(bool use_graph, const EllipticData& data, const TensorPtr& X, const Eigen::MatrixXd& train_mask, double num_train,
+double run_experiment(bool use_graph, const EllipticData& data, const TensorPtr& X, const Eigen::MatrixXd& train_mask, double num_train,
                     const Eigen::MatrixXd& test_mask,  double num_test, const std::vector<int>& test_rows, int F);
 
 int main() {
 
 //*************************************************************************************// 
-    //1.0.0)load the data:
+    //0)load the data:
     EllipticData data = load_elliptic(
     "data/elliptic_bitcoin_dataset/elliptic_txs_features.csv",  //features file
     "data/elliptic_bitcoin_dataset/elliptic_txs_classes.csv",   //labels file
@@ -34,7 +39,36 @@ int main() {
     int F = data.X.cols();  //no. of feats
     TensorPtr X = make_tensor(data.X);
 
-    //1.0.1) Startified Split (due to class imbalance)
+
+//*************************************************************************************//
+    std::vector<unsigned> seeds = {95, 67, 123};
+    double gnn_sum = 0, mlp_sum = 0;
+    std::vector<double> gnn_all, mlp_all;
+
+    for (unsigned s : seeds) {
+        double g, m;
+        std::cout << "\n===== SEED " << s << " =====\n";
+        run_seed(s, data, X, N, F, g, m);
+        gnn_all.push_back(g); mlp_all.push_back(m);
+        gnn_sum += g; mlp_sum += m;
+    }
+
+    std::cout << "\n===== SUMMARY over " << seeds.size() << " seeds =====\n";
+    std::cout << "GNN range: " << *std::min_element(gnn_all.begin(), gnn_all.end())
+              << " to " << *std::max_element(gnn_all.begin(), gnn_all.end()) << "\n";
+    std::cout << "MLP range: " << *std::min_element(mlp_all.begin(), mlp_all.end())
+              << " to " << *std::max_element(mlp_all.begin(), mlp_all.end()) << "\n";
+
+    return 0;
+    
+}
+
+
+//STEP 1 THROUGH 2:
+
+void run_seed(unsigned seed, const EllipticData& data, const TensorPtr& X, int N, int F, double& gnn_auroc, double& mlp_auroc){
+
+//1) Startified Split (due to class imbalance)
     std::vector<int> illicit_rows, licit_rows; //storing licit and illicit rows independently
     for(int r : data.labeled_rows) {
         if (data.Y(r,1) == 1.0){
@@ -44,7 +78,7 @@ int main() {
             licit_rows.push_back(r);
         }
     }
-    std::mt19937 generator(95); //a seeded generator 
+    std::mt19937 generator(seed); //a seeded generator: seed is now parameterized
     std::shuffle(illicit_rows.begin(), illicit_rows.end(), generator); //shuffling illicit rows
     std::shuffle(licit_rows.begin(), licit_rows.end(), generator); //shuffling licit rows
 
@@ -78,18 +112,11 @@ int main() {
     double num_test = test_rows.size();
 
 
-
-
-//*************************************************************************************//
-//3-5 inside run_experiment
-    std::cout << "\n########## GNN (graph ON) ##########\n";
-    run_experiment(true,  data, X, train_mask, num_train, test_mask, num_test, test_rows, F);
-
-    std::cout << "\n########## MLP (graph OFF) ##########\n";
-    run_experiment(false, data, X, train_mask, num_train, test_mask, num_test, test_rows, F);
-    return 0;
-    
+     // run both, capturing AUROC (see note below about making run_experiment return it)
+    gnn_auroc = run_experiment(true,  data, X, train_mask, num_train, test_mask, num_test, test_rows, F);
+    mlp_auroc = run_experiment(false, data, X, train_mask, num_train, test_mask, num_test, test_rows, F);
 }
+
 
 
 
@@ -97,7 +124,7 @@ int main() {
 //STEP 3 THROUGH 5:
 
 
-void run_experiment(bool use_graph, const EllipticData& data, const TensorPtr& X, const Eigen::MatrixXd& train_mask, double num_train,
+double run_experiment(bool use_graph, const EllipticData& data, const TensorPtr& X, const Eigen::MatrixXd& train_mask, double num_train,
                     const Eigen::MatrixXd& test_mask,  double num_test, const std::vector<int>& test_rows, int F){
 
 
@@ -159,12 +186,19 @@ void run_experiment(bool use_graph, const EllipticData& data, const TensorPtr& X
     double accuracy  = (double)(TP + TN) / test_rows.size();
     double auroc = compute_auroc(scores, is_illicit);   //calling auroc function
 
+    //GNN or MLP?
+    std::string model = (use_graph)?"GNN":"MLP";
+
     //printing the metrices:
+    std::cout << "\n\n\n========" << model << "=======\n\n"
     std::cout << "\n=== Test metrics ===\n";
     std::cout << "TP=" << TP << " FP=" << FP << " TN=" << TN << " FN=" << FN << "\n";
     std::cout << "precision " << precision << "  recall " << recall
             << "  F1 " << f1 << "  accuracy " << accuracy << "\n";
     std::cout << "AUROC " << auroc << "\n";
+
+
+    return auroc;
 }
 
 
@@ -213,3 +247,5 @@ double compute_auroc(const std::vector<double>& scores, const std::vector<bool>&
     return AUROC;
 
 }
+
+
