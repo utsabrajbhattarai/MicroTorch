@@ -6,5 +6,5 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(raylib)
 
-add_executable(gnn_gui main.cpp)
-target_link_libraries(gnn_gui PRIVATE raylib)
+add_executable(gnn_gui main.cpp csv_loader.cpp)
+target_link_libraries(gnn_gui PRIVATE raylib) 
