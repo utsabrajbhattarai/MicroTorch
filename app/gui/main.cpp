@@ -54,6 +54,23 @@ int draw_ranked_accounts(const std::vector<Account>& accounts,
     return selected_account_id;
 }
 
+void draw_preview_table(const std::vector<Node>& nodes, int max_rows = 5) { //Draw a preview of the nodes table on the left side of the window
+    int x = 20, y = 20; //Starting position for the table
+    DrawText("DATA PREVIEW", x, y, 16, BLACK);
+    y += 25;
+    DrawText("node_id  account_id   pred_prob  pred_label", x, y, 10, DARKGRAY);
+    y += 15;
+
+    int rows_to_show = std::min((int)nodes.size(), max_rows);
+    for (int i = 0; i < rows_to_show; ++i) { //Draw each node's data in a row
+        const auto& n = nodes[i]; 
+        DrawText(TextFormat("%-8d %-12lld %-10.2f %d",
+                             n.node_id, n.account_id, n.pred_prob, n.pred_label),
+                 x, y, 10, BLACK);
+        y += 15;
+    }
+}
+
 int main() {
     auto nodes = load_nodes_csv("gui_artifacts/nodes.csv"); //Load nodes from CSV file
     auto edges = load_edges_csv("gui_artifacts/edges.csv"); //Load edges from CSV file
@@ -77,8 +94,10 @@ int main() {
         BeginDrawing(); //Setup canvas to start drawing
         ClearBackground(RAYWHITE); //background color
 
+        draw_preview_table(nodes); //draw preview table on the left side of the window
         selected_account_id = draw_ranked_accounts(accounts, nodes, selected_account_id); //draw table, get updated selection
         draw_metrics(metrics); //draw metrics on the left side of the window
+    
         //find which node_id corresponds to the selected account
         int focal_node_id = 0;
         for (const auto& n : nodes) {
@@ -99,8 +118,8 @@ int main() {
         std::vector<Vector2> neighbor_pos;
         for (int i = 0; i < k; ++i) {
             float angle = 2 * PI * i / k;
-            float x = cx + radius * std::cos(angle);
-            float y = cy + radius * std::sin(angle);
+            float x = cx + radius * std::cos(angle); //compute x position of neighbor node
+            float y = cy + radius * std::sin(angle); //compute y position of neighbor node
             neighbor_pos.push_back({x, y});
         }
 
