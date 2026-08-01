@@ -12,14 +12,26 @@ std::vector<int> get_neighbors(int node_id, const std::vector<Edge>& edges) { //
     return neighbors;
 }
 
-int draw_ranked_accounts(const std::vector<Account>& accounts,
+void draw_metrics(const Metrics& m) { //Draw the metrics on the left side of the window
+    int x = 20, y = 550;
+    DrawText("METRICS", x, y, 16, BLACK);
+    y += 25;
+    DrawText(TextFormat("Precision: %.3f", m.precision), x, y, 12, BLACK); y += 20;
+    DrawText(TextFormat("Recall:    %.3f", m.recall), x, y, 12, BLACK); y += 20;
+    DrawText(TextFormat("F1:        %.3f", m.f1), x, y, 12, BLACK); y += 20;
+    DrawText(TextFormat("Accuracy:  %.3f", m.accuracy), x, y, 12, BLACK); y += 20;
+    DrawText(TextFormat("AUROC:     %.3f", m.auroc), x, y, 12, BLACK); y += 20;
+    DrawText(TextFormat("TP:%d FP:%d TN:%d FN:%d", m.TP, m.FP, m.TN, m.FN), x, y, 12, BLACK);
+}
+
+int draw_ranked_accounts(const std::vector<Account>& accounts, 
                           const std::vector<Node>& nodes,
-                          int selected_account_id) {
+                          int selected_account_id) { //Draw the ranked accounts on the left side of the window, return the selected account_id
     int x = 20, y = 150;
     int row_height = 30;
     int row_width = 400;
 
-    for (const auto& acc : accounts) {
+    for (const auto& acc : accounts) { //Draw each account as a row in the table
         Rectangle row = { (float)x, (float)y, (float)row_width, (float)row_height };
 
         bool hovered = CheckCollisionPointRec(GetMousePosition(), row);
@@ -32,7 +44,7 @@ int draw_ranked_accounts(const std::vector<Account>& accounts,
         DrawText(TextFormat("#%d  acct:%lld  risk:%.2f", acc.rank, acc.account_id, acc.risk_score),
                  x + 5, y + 7, 12, BLACK);
 
-        if (clicked) {
+        if (clicked) { //If the row is clicked, update the selected account_id
             selected_account_id = acc.account_id;
         }
 
@@ -66,7 +78,7 @@ int main() {
         ClearBackground(RAYWHITE); //background color
 
         selected_account_id = draw_ranked_accounts(accounts, nodes, selected_account_id); //draw table, get updated selection
-
+        draw_metrics(metrics); //draw metrics on the left side of the window
         //find which node_id corresponds to the selected account
         int focal_node_id = 0;
         for (const auto& n : nodes) {
