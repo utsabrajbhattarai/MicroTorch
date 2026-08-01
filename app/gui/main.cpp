@@ -86,6 +86,9 @@ void draw_preview_table(const std::vector<Node>& nodes, Font font, int max_rows 
     }
 }
 
+    Color cream = {252, 249, 240, 255}; //defined a color for background. 
+    //You may change the background color by changing the RGBA values.
+
 int main() {
     auto nodes = load_nodes_csv("gui_artifacts/nodes.csv"); //Load nodes from CSV file
     auto edges = load_edges_csv("gui_artifacts/edges.csv"); //Load edges from CSV file
@@ -110,7 +113,7 @@ int main() {
 
     while (!WindowShouldClose()) { //Main game loop
         BeginDrawing(); //Setup canvas to start drawing
-        ClearBackground(RAYWHITE); //background color
+        ClearBackground(cream); //background color
 
         //panel backgrounds for visual separation
         DrawRectangle(10, 10, 430, 190, LIGHTGRAY);      //preview table backing
