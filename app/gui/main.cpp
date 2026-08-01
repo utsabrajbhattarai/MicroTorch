@@ -12,6 +12,36 @@ std::vector<int> get_neighbors(int node_id, const std::vector<Edge>& edges) { //
     return neighbors;
 }
 
+int draw_ranked_accounts(const std::vector<Account>& accounts,
+                          const std::vector<Node>& nodes,
+                          int selected_account_id) {
+    int x = 20, y = 150;
+    int row_height = 30;
+    int row_width = 400;
+
+    for (const auto& acc : accounts) {
+        Rectangle row = { (float)x, (float)y, (float)row_width, (float)row_height };
+
+        bool hovered = CheckCollisionPointRec(GetMousePosition(), row);
+        bool clicked = hovered && IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
+
+        Color bg = (acc.account_id == selected_account_id) ? SKYBLUE
+                   : hovered ? LIGHTGRAY : RAYWHITE;
+        DrawRectangleRec(row, bg);
+        DrawRectangleLinesEx(row, 1, GRAY);
+        DrawText(TextFormat("#%d  acct:%lld  risk:%.2f", acc.rank, acc.account_id, acc.risk_score),
+                 x + 5, y + 7, 12, BLACK);
+
+        if (clicked) {
+            selected_account_id = acc.account_id;
+        }
+
+        y += row_height;
+    }
+
+    return selected_account_id;
+}
+
 int main() {
     auto nodes = load_nodes_csv("gui_artifacts/nodes.csv"); //Load nodes from CSV file
     auto edges = load_edges_csv("gui_artifacts/edges.csv"); //Load edges from CSV file
@@ -29,11 +59,22 @@ int main() {
     InitWindow(1280, 720, "MicroTorch GNN Dashboard"); //Initialize window and OpenGL context
     SetTargetFPS(60); //Set target FPS
 
-    int focal_node_id = 0; //hardcoded for now; later this comes from a click
+    long long selected_account_id = accounts[0].account_id; //default: top-ranked account
 
     while (!WindowShouldClose()) { //Main game loop
         BeginDrawing(); //Setup canvas to start drawing
         ClearBackground(RAYWHITE); //background color
+
+        selected_account_id = draw_ranked_accounts(accounts, nodes, selected_account_id); //draw table, get updated selection
+
+        //find which node_id corresponds to the selected account
+        int focal_node_id = 0;
+        for (const auto& n : nodes) {
+            if (n.account_id == selected_account_id) {
+                focal_node_id = n.node_id;
+                break;
+            }
+        }
 
         //circular subgraph layout: focal node at center, neighbors arranged around it
         float cx = 800, cy = 360; //center of subgraph area (right side of window)
