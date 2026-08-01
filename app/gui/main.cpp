@@ -4,6 +4,16 @@
 
 int main() {
     auto nodes = load_nodes_csv("gui_artifacts/nodes.csv"); //Load nodes from CSV file
+    auto edges = load_edges_csv("gui_artifacts/edges.csv"); //Load edges from CSV file
+    auto accounts = load_accounts_csv("gui_artifacts/accounts.csv"); //Load accounts from CSV file
+    auto metrics = load_metrics_csv("gui_artifacts/metrics.csv"); //Load metrics from CSV file
+
+    std::cout << "Loaded " << nodes.size() << " nodes, " //check if data is loaded correctly
+          << edges.size() << " edges, "
+          << accounts.size() << " accounts\n";
+    std::cout << "Metrics: precision=" << metrics.precision
+          << " recall=" << metrics.recall
+          << " auroc=" << metrics.auroc << "\n";
     std::cout << "Loaded " << nodes.size() << " nodes\n"; //Print the number of nodes loaded
 
     InitWindow(1280, 720, "MicroTorch GNN Dashboard"); //Initialize window and OpenGL context
