@@ -1,6 +1,16 @@
 #include "raylib.h"
 #include "csv_loader.hpp"
 #include <iostream>
+#include <cmath>
+
+std::vector<int> get_neighbors(int node_id, const std::vector<Edge>& edges) { //Find all nodes connected to node_id
+    std::vector<int> neighbors;
+    for (const auto& e : edges) {
+        if (e.src_node_id == node_id) neighbors.push_back(e.dst_node_id);
+        else if (e.dst_node_id == node_id) neighbors.push_back(e.src_node_id);
+    }
+    return neighbors;
+}
 
 int main() {
     auto nodes = load_nodes_csv("gui_artifacts/nodes.csv"); //Load nodes from CSV file
@@ -19,23 +29,44 @@ int main() {
     InitWindow(1280, 720, "MicroTorch GNN Dashboard"); //Initialize window and OpenGL context
     SetTargetFPS(60); //Set target FPS
 
+    int focal_node_id = 0; //hardcoded for now; later this comes from a click
+
     while (!WindowShouldClose()) { //Main game loop
         BeginDrawing(); //Setup canvas to start drawing
         ClearBackground(RAYWHITE); //background color
 
-        //temporary: draw each node as a circle in a simple grid, just to see the data
-        int x = 100; 
-        int y = 100;
-        for (size_t i = 0; i < nodes.size(); ++i) { 
-            Color c = (nodes[i].pred_label == 1) ? RED : GREEN; 
-            DrawCircle(x, y, 20, c); //Draw a color-filled circle representing the node
-            DrawText(TextFormat("%lld", nodes[i].account_id), x - 30, y + 25, 10, BLACK);
+        //circular subgraph layout: focal node at center, neighbors arranged around it
+        float cx = 800, cy = 360; //center of subgraph area (right side of window)
+        float radius = 200;
 
-            x += 150;
-            if (x > 1100) { //If we've reached the end of the row
-                x = 100; //Reset x to the start of the row
-                y += 150; //Move down to the next row
-            }
+        auto neighbors = get_neighbors(focal_node_id, edges); //get all neighbors of the focal node
+        int k = neighbors.size();
+
+        //compute each neighbor's position first, so we can draw edges before nodes
+        std::vector<Vector2> neighbor_pos;
+        for (int i = 0; i < k; ++i) {
+            float angle = 2 * PI * i / k;
+            float x = cx + radius * std::cos(angle);
+            float y = cy + radius * std::sin(angle);
+            neighbor_pos.push_back({x, y});
+        }
+
+        //draw edges first
+        for (int i = 0; i < k; ++i) {
+            DrawLine(cx, cy, neighbor_pos[i].x, neighbor_pos[i].y, GRAY);
+        }
+
+        //draw focal node
+        DrawCircle(cx, cy, 25, BLUE);
+        DrawText(TextFormat("%lld", nodes[focal_node_id].account_id), cx - 30, cy + 30, 10, BLACK);
+
+        //draw neighbor nodes, colored by prediction
+        for (int i = 0; i < k; ++i) {
+            int nid = neighbors[i];
+            Color c = (nodes[nid].pred_label == 1) ? RED : GREEN; //red = predicted illicit, green = predicted licit
+            DrawCircle(neighbor_pos[i].x, neighbor_pos[i].y, 20, c);
+            DrawText(TextFormat("%lld", nodes[nid].account_id),
+                     neighbor_pos[i].x - 30, neighbor_pos[i].y + 25, 10, BLACK);
         }
 
         EndDrawing();
