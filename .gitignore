@@ -1,0 +1,43 @@
+# ---- Build output ------------------------------------------------------
+build/
+#In case if differently named dir:
+cmake-build-*/
+out/
+
+
+# ---- Compiled artifacts (if any land outside build/) -------------------
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.out
+*.exe
+
+
+# ---- Dataset -----------------------------------------------------------
+data/*
+!data/README.md
+
+
+# ---- Editor / IDE ------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*~
+
+
+# ---- CMake stray files (normally inside build/, but just in case) -------
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+
+
+# ---- macOS junk --------------------------------------------------------
+.DS_Store
+__MACOSX/
+plot_*.py
+*.png
+generate_dummy_log.py
+training_log.csv
