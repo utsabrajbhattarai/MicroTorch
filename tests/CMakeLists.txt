@@ -40,11 +40,11 @@ add_executable(microtorch_tests
     test_gnn_model.cpp
 
     #diffusion tests:
-    #test_diffusion_model.cpp
+    test_diffusion_model.cpp
     test_noise_schedule.cpp
     
     #test logger:
-    #test_logger.cpp (not implemented import atm)
+    test_logger.cpp 
 )
 
     target_link_libraries(microtorch_tests
