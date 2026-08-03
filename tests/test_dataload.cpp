@@ -95,7 +95,8 @@ TEST_CASE("build_txid_index and load_edges work correctly", "[data_loader]")
     // Load the edges, translated into row-index pairs
     std::vector<std::pair<int,int>> edges = microtorch::load_edges("test_edges.csv", index, true);
 
-    // Checking the size
+    // Checking the size: one entry per input edge (single direction; load_edges
+    // does not symmetrize -- symmetrization happens later in load_elliptic)
     REQUIRE(edges.size() == 2);
 
     // Checking each edge translates to the correct row indices
@@ -168,20 +169,27 @@ TEST_CASE("load_elliptic assembles EllipticData correctly", "[data_loader]")
     REQUIRE(std::find(data.labeled_rows.begin(), data.labeled_rows.end(), 3) != data.labeled_rows.end());
     REQUIRE(std::find(data.labeled_rows.begin(), data.labeled_rows.end(), 2) == data.labeled_rows.end());
 
-    // checking symmetric edges and self loops
-    REQUIRE(data.A.coeff(1, 2) == Catch::Approx(1.0));   // 900-200 edge
-    REQUIRE(data.A.coeff(2, 1) == Catch::Approx(1.0));   // symmetric
-    REQUIRE(data.A.coeff(3, 0) == Catch::Approx(1.0));   // 700-500 edge
-    REQUIRE(data.A.coeff(0, 3) == Catch::Approx(1.0));   // symmetric
-    REQUIRE(data.A.coeff(0, 0) == Catch::Approx(1.0));   // self-loop
-    REQUIRE(data.A.coeff(1, 1) == Catch::Approx(1.0));   // self-loop
-    REQUIRE(data.A.coeff(2, 2) == Catch::Approx(1.0));   // self-loop
-    REQUIRE(data.A.coeff(3, 3) == Catch::Approx(1.0));   // self-loop
-    REQUIRE(data.A.coeff(0, 1) == Catch::Approx(0.0));   // no edge between 500 and 900
+    // checking symmetric edges and self loops.
+    // A is symmetrically normalized (D^-1/2 A D^-1/2), so edge/self-loop weights
+    // are NOT 1.0 -- they are scaled by degree. Test STRUCTURE (present vs absent)
+    // rather than exact weights, so this stays correct regardless of the
+    // normalization scheme.
+    REQUIRE(data.A.coeff(1, 2) > 0.0);                 // 900-200 edge present
+    REQUIRE(data.A.coeff(2, 1) > 0.0);                 // symmetric
+    REQUIRE(data.A.coeff(3, 0) > 0.0);                 // 700-500 edge present
+    REQUIRE(data.A.coeff(0, 3) > 0.0);                 // symmetric
+    REQUIRE(data.A.coeff(0, 0) > 0.0);                 // self-loop present
+    REQUIRE(data.A.coeff(1, 1) > 0.0);                 // self-loop present
+    REQUIRE(data.A.coeff(2, 2) > 0.0);                 // self-loop present
+    REQUIRE(data.A.coeff(3, 3) > 0.0);                 // self-loop present
+    REQUIRE(data.A.coeff(0, 1) == Catch::Approx(0.0)); // no edge between 500 and 900
+
+    // symmetry must hold exactly (whatever the weight, A(i,j) == A(j,i))
+    REQUIRE(data.A.coeff(1, 2) == Catch::Approx(data.A.coeff(2, 1)));
+    REQUIRE(data.A.coeff(3, 0) == Catch::Approx(data.A.coeff(0, 3)));
 
     // cleaning up all files
     std::remove("test_elliptic_features.csv");
     std::remove("test_elliptic_classes.csv");
     std::remove("test_elliptic_edges.csv");
 }
-
