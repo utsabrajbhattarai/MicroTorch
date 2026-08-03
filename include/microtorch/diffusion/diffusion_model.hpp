@@ -3,6 +3,7 @@
 #include "microtorch/diffusion/noise_schedule.hpp"
 #include <vector>
 #include "microtorch/ops.hpp"
+#include <random>
 
 
 namespace microtorch {

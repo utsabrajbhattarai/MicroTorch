@@ -35,6 +35,7 @@ add_library(microtorch STATIC
 
     # ---- diffusion/ : MLP denoiser + noise schedule, stretch goal ----
     diffusion/diffusion_model.cpp
+    diffusion/noise_schedule.cpp
 )
 
 target_include_directories(microtorch
