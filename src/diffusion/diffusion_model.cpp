@@ -57,11 +57,26 @@ namespace microtorch {
     //returning the parameters list 
     std::vector<TensorPtr> DiffusionModel::parameters() {
     return { W1_, b1_, W2_, b2_, W_out_, b_out_ };
-
+    }
     //the forward layer:
-    TensorPtr forward(const TensorPtr& input){
-        
+    TensorPtr DiffusionModel::forward(const TensorPtr& input) {
+        //Layer 1:
+        TensorPtr z1 = matmul(input, W1_); //
+        TensorPtr pre_layer1 = broadcast_add(z1, b1_);
+        TensorPtr layer1 = relu(pre_layer1);
+
+        //Layer 2:
+        TensorPtr z2 = matmul(layer1, W2_);
+        TensorPtr pre_layer2 = broadcast_add(z2, b2_);
+        TensorPtr layer2 = relu(pre_layer2);
+
+        //Layer3:
+        TensorPtr z3 = matmul(layer2, W_out_);
+        TensorPtr final_layer = broadcast_add(z3, b_out_);
+
+        return final_layer;
+
     }
 
 }
-}  // namespace microtorch
+  // namespace microtorch
