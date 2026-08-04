@@ -29,4 +29,39 @@ namespace microtorch {
 
     }
 
+    //he-init for the weights:(using ReLU)
+    static Eigen::MatrixXd he_init(int rows, int cols) {
+        static std::mt19937 gen(95);
+        double stddev = std::sqrt(2.0 / rows);  
+        std::normal_distribution<double> dist(0.0, stddev);
+        Eigen::MatrixXd w(rows, cols);  //dummy weight
+        for (int i = 0; i < rows; ++i){
+            for (int j = 0; j < cols; ++j){
+                w(i, j) = dist(gen);
+            }
+        }
+        return w;
+    }
+
+    //constructor to initialize weights and biases
+    DiffusionModel::DiffusionModel(int in_features, int hidden, int out_features){
+        W1_ = make_tensor(he_init(in_features, hidden));
+        b1_ = make_tensor(Eigen::MatrixXd::Zero(1, hidden));
+        W2_ = make_tensor(he_init(hidden, hidden));
+        b2_ = make_tensor(Eigen::MatrixXd::Zero(1, hidden));
+        W_out_ = make_tensor(he_init(hidden, out_features));
+        b_out_ = make_tensor(Eigen::MatrixXd::Zero(1, out_features));
+
+    }
+
+    //returning the parameters list 
+    std::vector<TensorPtr> DiffusionModel::parameters() {
+    return { W1_, b1_, W2_, b2_, W_out_, b_out_ };
+
+    //the forward layer:
+    TensorPtr forward(const TensorPtr& input){
+        
+    }
+
+}
 }  // namespace microtorch
