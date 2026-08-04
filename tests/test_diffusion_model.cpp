@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include "microtorch/diffusion/diffusion_model.hpp"
+#include "microtorch/gradient_check.hpp"
 
 using namespace microtorch;
 
@@ -38,4 +39,17 @@ TEST_CASE("forward_noise: t=0 preserves the point, large t destroys it", "[diffu
         double c2 = std::sqrt(1.0 - ns.alpha_bar[t]);
         REQUIRE(xt.isApprox(c1 * x0 + c2 * noise));   // reconstruct from the returned noise
     }
+}
+
+
+TEST_CASE("DiffusionModel: full denoiser forward/backward is gradient-correct", "[diffusion][model]") {
+    DiffusionModel model(3, 8, 2);                       // in=3 (x,y,t), hidden=8, out=2 (noise)
+    Eigen::MatrixXd inp    = Eigen::MatrixXd::Random(5, 3);
+    Eigen::MatrixXd target = Eigen::MatrixXd::Random(5, 2);   // stand-in "true noise"
+    auto x = make_tensor(inp);
+
+    double err = gradient_check(
+        [&](TensorPtr t){ return mse_loss(model.forward(t), target); },
+        x);
+    REQUIRE(err < 1e-6);
 }
