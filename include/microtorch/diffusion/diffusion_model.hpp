@@ -30,7 +30,10 @@ namespace microtorch {
         //just a simple and plain MLP.
         TensorPtr forward(const TensorPtr& input);
 
-        std::vector<TensorPtr> parameters();
+        std::vector<TensorPtr> parameters(); //parameter list
+
+        //sampling loop for generating sample from predicted noise 
+        Eigen::MatrixXd sample(DiffusionModel& model, const NoiseSchedule& ns, int n, int T, std::mt19937& rng);
     
     };
 

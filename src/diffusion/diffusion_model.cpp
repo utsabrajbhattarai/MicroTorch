@@ -78,5 +78,59 @@ namespace microtorch {
 
     }
 
+
+    //sampling logic:
+    Eigen::MatrixXd sample(DiffusionModel& model, const NoiseSchedule& ns, int n, int T, std::mt19937& rng){
+
+        //the final x to return
+        Eigen::MatrixXd x(n,2);
+
+        std::normal_distribution<double> dist(0.0, 1.0); //normal distribution
+        for (int i = 0; i < n; i++ ){
+            for (int j = 0; j < 2; j++ ){ 
+                x(i,j) = dist(rng); //each element holds a random noise at first
+            }
+        }
+
+        for (int t = T - 1; t >= 0; t--) {
+
+            //same like forward creating the input Tensor
+            Eigen::MatrixXd input(n,3);
+            input.leftCols(2) = x;    //filling inputs first 2 columns with noisy x
+            input.col(2).setConstant(t / static_cast<double>(T));   //normalizing t to make it range from 0 to 1
+            TensorPtr input_tensor = make_tensor(input);
+
+
+            TensorPtr pred = model.forward(input_tensor); //prediction
+
+            //Reversing the noise:
+            double alpha_t = ns.alpha[t];
+            double alpha_bar_t = ns.alpha_bar[t];
+            double beta_t = ns.beta[t];
+
+            //denoisig update: removing a scaled portion of predicted noise
+            Eigen::MatrixXd pred_noise = pred->data;
+            Eigen::MatrixXd mean = (1.0 / std::sqrt(alpha_t)) * (x - (beta_t / std::sqrt(1.0 - alpha_bar_t)) * pred_noise);
+
+            //fresh randomness: to make it explore distribution better
+            if (t > 0){
+                Eigen::MatrixXd z(n,2);
+                for (int i = 0; i < n; i++ ){
+                    for (int j = 0; j < 2; j++ ){ 
+                        z(i,j) = dist(rng); //each element holds a random noise at first
+                    }
+                }
+                double sigma = std::sqrt(beta_t); //noise is added based on how far off is t from 0
+
+                x = mean + sigma * z;
+            }
+            else {
+                x = mean; //no noise added in last step;
+            }
+
+
+        }
+    }
+
 }
   // namespace microtorch
