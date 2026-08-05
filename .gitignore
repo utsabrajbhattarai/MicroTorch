@@ -41,3 +41,7 @@ plot_*.py
 *.png
 generate_dummy_log.py
 training_log.csv
+
+
+#---- Temporary Output Files ------------------------------------------------------
+generated.csv

@@ -32,8 +32,7 @@ namespace microtorch {
 
         std::vector<TensorPtr> parameters(); //parameter list
 
-        //sampling loop for generating sample from predicted noise 
-        Eigen::MatrixXd sample(DiffusionModel& model, const NoiseSchedule& ns, int n, int T, std::mt19937& rng);
+        
     
     };
 
