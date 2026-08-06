@@ -17,6 +17,7 @@ add_library(microtorch STATIC
     # ---- ops/ (one file per op, add as you build them) ----
     ops/matmul.cpp
     ops/broadcast_add.cpp
+    ops/add.cpp
     ops/relu.cpp
     ops/neighbor_aggregation.cpp
     ops/reduction.cpp          # sum and mean
