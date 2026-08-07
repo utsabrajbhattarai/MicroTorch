@@ -18,7 +18,7 @@ const int T = 1000; //number of timestamps
 const int hidden = 256;  //number of hidden neurons
 const double lr = 0.0005;    //learning rate of adam optimizer
 
-const int MAX_EPOCH = 2000;
+const int MAX_EPOCH = 1200;
 const int TIMESTEPS_PER_EPOCH = 16;   //random t's per step
 const int K = 4;   //number of sin/cos frequency pairs => time embedding is 2*K wide, so input width is 2 + 2*K = 10
 
@@ -51,7 +51,7 @@ Eigen::MatrixXd build_input(const Eigen::MatrixXd& x, int t, int k, int T){
 int main() {
     
     //loading/generating the toy data:
-    Eigen::MatrixXd x0 = make_spiral(N); //noise is already a default arg
+    Eigen::MatrixXd x0 = make_light_spiral(N); //noise is already a default arg
 
     //creating noise schedule
     NoiseSchedule ns = make_noise_schedule(T);
