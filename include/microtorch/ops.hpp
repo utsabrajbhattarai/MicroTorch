@@ -3,6 +3,7 @@
 #pragma once
 #include "microtorch/ops/matmul.hpp"
 #include "microtorch/ops/broadcast_add.hpp"
+#include "microtorch/ops/add.hpp"
 #include "microtorch/ops/relu.hpp"
 #include "microtorch/ops/neighbor_aggregation.hpp"
 #include "microtorch/ops/reduction.hpp"

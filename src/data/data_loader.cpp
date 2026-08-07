@@ -187,7 +187,6 @@ vector<pair<int,int>> load_edges(const string& path, const unordered_map<long lo
         }
         int row1 = it1->second; //if none edge is missing pulling the row index
         int row2 = it2->second;
-        edges.push_back({row1, row2});
 
 
         // 4. push_back a pair {row1, row2} into edges
