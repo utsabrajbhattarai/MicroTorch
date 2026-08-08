@@ -187,7 +187,6 @@ vector<pair<int,int>> load_edges(const string& path, const unordered_map<long lo
         }
         int row1 = it1->second; //if none edge is missing pulling the row index
         int row2 = it2->second;
-        edges.push_back({row1, row2});
 
 
         // 4. push_back a pair {row1, row2} into edges
@@ -209,6 +208,11 @@ EllipticData load_elliptic(const string& features_path, const string& classes_pa
 
     if (N == 0) {
         throw runtime_error("Loaded features matrix is empty!");  // if 0 rows, file is empty
+    }
+
+    data.tx_ids.resize(N);  // resizing tx_ids vector from 0 to N for storing n transaction ids.
+    for (const auto& pair : txid_to_row) {
+        data.tx_ids[pair.second] = std::to_string(pair.first);   // storing transaction ids in tx_ids
     }
 
     data.X = raw_X.rightCols(raw_X.cols() - 2);  // x member variable(eigenmatrixxd) inside struct data now holds (N, 166) matrix. rightCols(m) takes m cols from right side. as we dont require first two cols so, now x has third to last cols in each row of features file
@@ -233,7 +237,7 @@ EllipticData load_elliptic(const string& features_path, const string& classes_pa
         getline(ss, txid_text, ',');
         getline(ss, class_text, ',');
         
-        long long txid = stoll(txid_text); //converting string to long long as txid is long long
+        long long txid = stoll(txid_text); //converting string to long long 
         
         
         auto it = txid_to_row.find(txid); // this line returns pointer and txid_to_row is unordered map which may return any datatype so using auto
@@ -254,6 +258,7 @@ EllipticData load_elliptic(const string& features_path, const string& classes_pa
     class_file.close();
 
     vector<pair<int, int>> mapped_edges = load_edges(edges_path, txid_to_row, true);
+    data.raw_edges = mapped_edges;  // storing edges in raw_edges(variable for gui artifacts)
 
     //  Build Sparse Matrix A with Self-Loops and Symmetric Edges
     vector<Eigen::Triplet<double>> triplets;

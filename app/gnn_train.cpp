@@ -9,6 +9,7 @@
 #include <iostream>
 #include <random>
 #include <string>
+#include "microtorch/gui/gui_export.hpp"
 
 const int EPOCH_N = 70;  
 
@@ -200,6 +201,97 @@ double run_experiment(bool use_graph, const EllipticData& data, const TensorPtr&
     std::cout << "precision " << precision << "  recall " << recall
             << "  F1 " << f1 << "  accuracy " << accuracy << "\n";
     std::cout << "AUROC " << auroc << "\n";
+
+    
+    
+    //  gui artifacts
+
+    if (use_graph) {  
+    std::cout << "\n[GUI Export] Exporting predictions to 'gui_artifacts/'...\n";
+
+    std::vector<NodeVisData> vis_nodes;
+    int total_nodes = data.X.rows();
+    vis_nodes.reserve(total_nodes); // reserve space for all nodes in features file
+
+    std::vector<int> eval_pred;
+    std::vector<int> eval_act;
+    std::vector<double> eval_scores;
+
+    for (int i = 0; i < total_nodes; ++i) {
+        double l0 = final_logits->data(i, 0);
+        double l1 = final_logits->data(i, 1);
+        double max_l = std::max(l0, l1);
+        double prob1 = std::exp(l1 - max_l) / (std::exp(l0 - max_l) + std::exp(l1 - max_l));
+        // calculating probability of being illicit 
+
+        int pred_lbl = (prob1 >= 0.5) ? 1 : 0;  // predicted label based on probability
+
+        int true_lbl = -1;
+        if (data.Y(i, 1) == 1.0) true_lbl = 1;
+        else if (data.Y(i, 0) == 1.0) true_lbl = 0;  // true label from the dataset
+
+        int is_test_node = (test_mask(i, 0) == 1.0) ? 1 : 0;  // if its test node flag = 1, while 0 for training nodes
+        std::string tx_str = (i < (int)data.tx_ids.size()) ? data.tx_ids[i] : std::to_string(i); // transaction id string
+
+        vis_nodes.push_back({
+            i,
+            tx_str,
+            prob1,
+            pred_lbl,
+            true_lbl,
+            is_test_node
+        });
+
+        if (is_test_node && true_lbl != -1) {
+            eval_pred.push_back(pred_lbl);
+            eval_act.push_back(true_lbl);
+            eval_scores.push_back(prob1);
+        }
+    }
+
+    
+std::unordered_map<std::string, AccountRecord> account_map;
+
+for (const auto& n : vis_nodes) {
+    auto& rec = account_map[n.account_id];
+    rec.account_id = n.account_id;
+    rec.num_nodes += 1;
+    if (n.pred_label == 1) {
+        rec.num_illicit_pred += 1;
+    }
+}
+
+std::vector<AccountRecord> vis_accounts;
+vis_accounts.reserve(account_map.size());
+
+for (const auto& pair : account_map) {
+    auto rec = pair.second;
+    // calculating risk score of each account
+    rec.risk_score = static_cast<double>(rec.num_illicit_pred) / rec.num_nodes;
+    vis_accounts.push_back(rec);
+}
+
+// sorting accounts by risk score(highest first)
+std::sort(vis_accounts.begin(), vis_accounts.end(), [](const AccountRecord& a, const AccountRecord& b) {
+    return a.risk_score > b.risk_score;
+});
+
+// Assign ranks 1, 2, 3... based on sorted risk position
+for (size_t r = 0; r < vis_accounts.size(); ++r) {
+    vis_accounts[r].rank = static_cast<int>(r + 1);
+}
+    export_all_gui_artifacts(
+        "gui_artifacts",
+        eval_pred,
+        eval_act,
+        eval_scores,
+        data.raw_edges,
+        vis_nodes,
+        vis_accounts
+    );
+
+    std::cout << "[GUI Export] Successfully exported files to ./gui_artifacts/\n";
+}
 
 
     return auroc;
