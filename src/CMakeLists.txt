@@ -14,6 +14,9 @@ add_library(microtorch STATIC
     data/toy_data.cpp       #for diffusion model, toy data generation
     data/data_loader.cpp    #for GNN model data loading from csv
 
+    eval/eval_metrics.cpp  #for evaluation metrics like precision, recall, auroc
+    gui/gui_export.cpp    #for exporting edges to csv for GUI visualization
+
     # ---- ops/ (one file per op, add as you build them) ----
     ops/matmul.cpp
     ops/broadcast_add.cpp
