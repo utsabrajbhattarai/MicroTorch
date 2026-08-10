@@ -3,13 +3,30 @@
 #include <iostream>
 #include <cmath>
 
-std::vector<int> get_neighbors(int node_id, const std::vector<Edge>& edges) { //Find all nodes connected to node_id
-    std::vector<int> neighbors;
+struct Neighbor { int id; bool outgoing; }; //outgoing = focal node is the sender (money flows focal -> neighbor)
+
+std::vector<Neighbor> get_neighbors(int node_id, const std::vector<Edge>& edges) { //Find all nodes connected to node_id, keeping who sent to whom
+    std::vector<Neighbor> neighbors;
     for (const auto& e : edges) {
-        if (e.src_node_id == node_id) neighbors.push_back(e.dst_node_id);
-        else if (e.dst_node_id == node_id) neighbors.push_back(e.src_node_id);
+        if (e.src_node_id == node_id) neighbors.push_back({e.dst_node_id, true});    //we are the sender -> focal -> neighbor
+        else if (e.dst_node_id == node_id) neighbors.push_back({e.src_node_id, false}); //we are the receiver -> neighbor -> focal
     }
     return neighbors;
+}
+
+//draws an arrow from 'from' to 'to', with the head sitting just outside the target circle (radius target_r) so it stays visible
+void draw_arrow(Vector2 from, Vector2 to, float target_r, Color color) {
+    float dx = to.x - from.x, dy = to.y - from.y;
+    float len = std::sqrt(dx*dx + dy*dy);
+    if (len < 1e-3f) return; //same point, nothing to draw
+    float ux = dx / len, uy = dy / len;                          //unit direction from -> to
+    Vector2 tip = { to.x - ux * target_r, to.y - uy * target_r }; //stop at the edge of the target node
+    DrawLineEx(from, tip, 2.0f, color);                          //the shaft
+    float head = 12.0f, a = 0.5f;                                //barb length and half-spread (radians)
+    Vector2 b1 = { tip.x + (-ux*std::cos(a) + uy*std::sin(a)) * head, tip.y + (-ux*std::sin(a) - uy*std::cos(a)) * head };
+    Vector2 b2 = { tip.x + (-ux*std::cos(a) - uy*std::sin(a)) * head, tip.y + ( ux*std::sin(a) - uy*std::cos(a)) * head };
+    DrawLineEx(tip, b1, 2.0f, color); //one barb of the arrowhead
+    DrawLineEx(tip, b2, 2.0f, color); //other barb
 }
 
 void draw_metrics(const Metrics& m, Font font) { //Draw the metrics on the left side of the window
@@ -184,9 +201,13 @@ int main() {
             neighbor_pos.push_back({x, y});
         }
 
-        //draw edges first
+        //draw edges first, as arrows pointing sender -> receiver
         for (int i = 0; i < k; ++i) {
-            DrawLine(cx, cy, neighbor_pos[i].x, neighbor_pos[i].y, GRAY);
+            Vector2 center = { cx, cy };
+            if (neighbors[i].outgoing)
+                draw_arrow(center, neighbor_pos[i], 20.0f, GRAY); //focal sent: arrowhead lands on the neighbor
+            else
+                draw_arrow(neighbor_pos[i], center, 25.0f, GRAY); //focal received: arrowhead lands on the focal node
         }
 
         //draw focal node
@@ -196,7 +217,7 @@ int main() {
 
         //draw neighbor nodes, colored by prediction
         for (int i = 0; i < k; ++i) {
-            int nid = neighbors[i];
+            int nid = neighbors[i].id;
             Color c = (nodes[nid].pred_label == 1) ? RED : GREEN; //red = predicted illicit, green = predicted licit
             DrawCircle(neighbor_pos[i].x, neighbor_pos[i].y, 20, c);
             DrawTextEx(uiFont, TextFormat("%lld", nodes[nid].account_id),
