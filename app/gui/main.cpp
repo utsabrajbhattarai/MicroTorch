@@ -29,36 +29,67 @@ int draw_ranked_accounts(const std::vector<Account>& accounts,
                           const std::vector<Node>& nodes,
                           int selected_account_id,
                           Font font,
+                          int& accounts_page,      //now takes the page by reference so it can change it
                           int max_rows = 8) { //Draw the ranked accounts table on the left side of the window, return the selected account_id
-    int x = 20, y = 220; //moved down so it starts below the preview table panel
+    int x = 20, y = 220;
     int row_height = 35;
     int row_width = 400;
 
-    int col1 = x + 5, col2 = x + 60, col3 = x + 220;  //rank, account_id, risk
+    int col1 = x + 5, col2 = x + 60, col3 = x + 220; //fixed pixel positions per column
 
-    int rows_to_show = std::min((int)accounts.size(), max_rows); //cap displayed rows regardless of real data size
-    for (int i = 0; i < rows_to_show; ++i) { //Draw each account row, highlight if selected or hovered
+    int total = (int)accounts.size();
+    int total_pages = (total + max_rows - 1) / max_rows; //ceiling division
+    if (accounts_page >= total_pages) accounts_page = total_pages - 1; //clamp if data shrank
+    if (accounts_page < 0) accounts_page = 0; //clamp if negative
+
+    int start = accounts_page * max_rows; //starting index for the current page
+    int end = std::min(start + max_rows, total); //ending index for the current page
+
+    for (int i = start; i < end; ++i) { //loop through the accounts for the current page
         const auto& acc = accounts[i];
-        Rectangle row = { (float)x, (float)y, (float)row_width, (float)row_height };
+        Rectangle row = { (float)x, (float)y, (float)row_width, (float)row_height }; //define the rectangle for the current row
 
-        bool hovered = CheckCollisionPointRec(GetMousePosition(), row); //Check if mouse is hovering over the row
-        bool clicked = hovered && IsMouseButtonPressed(MOUSE_LEFT_BUTTON); //Check if the row is clicked
+        bool hovered = CheckCollisionPointRec(GetMousePosition(), row); //check if the mouse is hovering over the row
+        bool clicked = hovered && IsMouseButtonPressed(MOUSE_LEFT_BUTTON); //check if the row is clicked
 
-        Color bg = (acc.account_id == selected_account_id) ? SKYBLUE //highlight selected row
-                   : hovered ? LIGHTGRAY : RAYWHITE; //highlight hovered row
-        DrawRectangleRec(row, bg); //Draw the background rectangle for the row
-        DrawRectangleLinesEx(row, 1, GRAY); //Draw the border of the row
+        Color bg = (acc.account_id == selected_account_id) ? SKYBLUE //highlight the selected account
+                   : hovered ? LIGHTGRAY : RAYWHITE;
+        DrawRectangleRec(row, bg); //draw the background of the row
+        DrawRectangleLinesEx(row, 1, GRAY); //draw the border of the row
 
-        DrawTextEx(font, TextFormat("#%d", acc.rank), {(float)col1, (float)(y + 9)}, 16, 1, BLACK);
-        DrawTextEx(font, TextFormat("%lld", acc.account_id), {(float)col2, (float)(y + 9)}, 16, 1, BLACK);
-        DrawTextEx(font, TextFormat("risk:%.2f%%", acc.risk_score * 100.0), {(float)col3, (float)(y + 9)}, 16, 1, BLACK);
+        DrawTextEx(font, TextFormat("#%d", acc.rank), {(float)col1, (float)(y + 9)}, 16, 1, BLACK); //draw the rank of the account
+        DrawTextEx(font, TextFormat("%lld", acc.account_id), {(float)col2, (float)(y + 9)}, 16, 1, BLACK); //draw the account_id of the account
+        DrawTextEx(font, TextFormat("risk:%.2f%%", acc.risk_score * 100.0), {(float)col3, (float)(y + 9)}, 16, 1, BLACK); //draw the risk_score of the account
 
-        if (clicked) {
+        if (clicked) { //update the selected account_id if the row is clicked
             selected_account_id = acc.account_id;
         }
 
         y += row_height;
     }
+
+    //pagination controls: Prev / Next buttons + page indicator
+    Rectangle prev_btn = {(float)x, (float)y + 10, 60, 25}; //offset y by 10 pixels for spacing
+    Rectangle next_btn = {(float)(x + 70), (float)y + 10, 60, 25}; //offset y by 10 pixels for spacing
+
+    bool prev_hovered = CheckCollisionPointRec(GetMousePosition(), prev_btn); //check if the previous button is hovered
+    bool next_hovered = CheckCollisionPointRec(GetMousePosition(), next_btn); //check if the next button is hovered
+
+    DrawRectangleRec(prev_btn, prev_hovered ? LIGHTGRAY : RAYWHITE); //draw the previous button with hover effect
+    DrawRectangleLinesEx(prev_btn, 1, GRAY); //draw the border of the previous button
+    DrawTextEx(font, "< Prev", {prev_btn.x + 5, prev_btn.y + 4}, 14, 1, BLACK); //draw the text for the previous button
+
+    DrawRectangleRec(next_btn, next_hovered ? LIGHTGRAY : RAYWHITE); //draw the next button with hover effect
+    DrawRectangleLinesEx(next_btn, 1, GRAY); //draw the border of the next button
+    DrawTextEx(font, "Next >", {next_btn.x + 5, next_btn.y + 4}, 14, 1, BLACK); //draw the text for the next button
+
+    if (prev_hovered && IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && accounts_page > 0) //check if the previous button is hovered and clicked, and if the current page is greater than 0
+        accounts_page--;
+    if (next_hovered && IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && accounts_page < total_pages - 1) //check if the next button is hovered and clicked, and if the current page is less than the total pages - 1
+        accounts_page++;
+
+    DrawTextEx(font, TextFormat("Page %d / %d", accounts_page + 1, total_pages), //draw the page indicator text
+               {(float)(x + 150), (float)y + 15}, 14, 1, DARKGRAY);
 
     return selected_account_id;
 }
@@ -110,6 +141,7 @@ int main() {
     SetTextureFilter(uiFont.texture, TEXTURE_FILTER_BILINEAR); //Set texture scaling filter mode
 
     long long selected_account_id = accounts[0].account_id; //default: top-ranked account
+    int accounts_page = 0; //current page of the ranked accounts table, starting at 0
 
     while (!WindowShouldClose()) { //Main game loop
         BeginDrawing(); //Setup canvas to start drawing
@@ -124,7 +156,7 @@ int main() {
         DrawLine(460, 0, 460, 720, GRAY);
 
         draw_preview_table(nodes, uiFont); //draw preview table on the left side of the window
-        selected_account_id = draw_ranked_accounts(accounts, nodes, selected_account_id, uiFont); //draw table, get updated selection
+        selected_account_id = draw_ranked_accounts(accounts, nodes, selected_account_id, uiFont, accounts_page); //draw table, get updated selection
         draw_metrics(metrics, uiFont); //draw metrics on the left side of the window
     
         //find which node_id corresponds to the selected account
