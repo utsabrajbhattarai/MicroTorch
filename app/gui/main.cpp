@@ -51,7 +51,7 @@ int draw_ranked_accounts(const std::vector<Account>& accounts,
 
         DrawTextEx(font, TextFormat("#%d", acc.rank), {(float)col1, (float)(y + 9)}, 16, 1, BLACK);
         DrawTextEx(font, TextFormat("%lld", acc.account_id), {(float)col2, (float)(y + 9)}, 16, 1, BLACK);
-        DrawTextEx(font, TextFormat("risk:%.2f", acc.risk_score), {(float)col3, (float)(y + 9)}, 16, 1, BLACK);
+        DrawTextEx(font, TextFormat("risk:%.2f%%", acc.risk_score * 100.0), {(float)col3, (float)(y + 9)}, 16, 1, BLACK);
 
         if (clicked) {
             selected_account_id = acc.account_id;
