@@ -2,6 +2,8 @@
 #include "csv_loader.hpp"
 #include <iostream>
 #include <cmath>
+#include <algorithm>
+#include <vector>
 
 struct Neighbor { int id; bool outgoing; }; //outgoing = focal node is the sender (money flows focal -> neighbor)
 
@@ -185,44 +187,55 @@ int main() {
             }
         }
 
-        //circular subgraph layout: focal node at center, neighbors arranged around it
+        //subgraph layout: focal at center, RECEIVED counterparties fan out on the left, SENT on the right
         float cx = 800, cy = 360; //center of subgraph area (right side of window)
         float radius = 200;
 
-        auto neighbors = get_neighbors(focal_node_id, edges); //get all neighbors of the focal node
-        int k = neighbors.size();
+        auto neighbors = get_neighbors(focal_node_id, edges); //all counterparties, with who-sent-to-whom
 
-        //compute each neighbor's position first, so we can draw edges before nodes
-        std::vector<Vector2> neighbor_pos;
-        for (int i = 0; i < k; ++i) {
-            float angle = 2 * PI * i / k;
-            float x = cx + radius * std::cos(angle); //compute x position of neighbor node
-            float y = cy + radius * std::sin(angle); //compute y position of neighbor node
-            neighbor_pos.push_back({x, y});
-        }
+        //split by direction so each side of the focal node means one flow direction
+        std::vector<Neighbor> received, sent;
+        for (const auto& nb : neighbors) (nb.outgoing ? sent : received).push_back(nb);
+        int total_in = (int)received.size(), total_out = (int)sent.size();
 
-        //draw edges first, as arrows pointing sender -> receiver
-        for (int i = 0; i < k; ++i) {
-            Vector2 center = { cx, cy };
-            if (neighbors[i].outgoing)
-                draw_arrow(center, neighbor_pos[i], 20.0f, GRAY); //focal sent: arrowhead lands on the neighbor
-            else
-                draw_arrow(neighbor_pos[i], center, 25.0f, GRAY); //focal received: arrowhead lands on the focal node
-        }
+        //top rankers have dozens-to-hundreds of edges, so show only the riskiest few per side to keep it readable
+        auto riskier = [&](const Neighbor& a, const Neighbor& b){ return nodes[a.id].pred_prob > nodes[b.id].pred_prob; };
+        std::sort(received.begin(), received.end(), riskier);
+        std::sort(sent.begin(),     sent.end(),     riskier);
+        const int MAX_PER_SIDE = 8; //cap each arc; bump this if you want denser subgraphs
+        int r_show = std::min(total_in,  MAX_PER_SIDE);
+        int s_show = std::min(total_out, MAX_PER_SIDE);
+
+        //positions: received spread over the left semicircle, sent over the right
+        std::vector<Vector2> r_pos, s_pos;
+        for (int j = 0; j < r_show; ++j) { float ang =  PI/2 + (j+1)*PI/(r_show+1); r_pos.push_back({cx + radius*std::cos(ang), cy + radius*std::sin(ang)}); }
+        for (int j = 0; j < s_show; ++j) { float ang = -PI/2 + (j+1)*PI/(s_show+1); s_pos.push_back({cx + radius*std::cos(ang), cy + radius*std::sin(ang)}); }
+
+        //draw arrows first so the nodes sit on top: received points INTO focal, sent points OUT to the neighbor
+        Vector2 center = { cx, cy };
+        for (int j = 0; j < r_show; ++j) draw_arrow(r_pos[j], center, 25.0f, GRAY);
+        for (int j = 0; j < s_show; ++j) draw_arrow(center, s_pos[j], 20.0f, GRAY);
 
         //draw focal node
         DrawCircle(cx, cy, 25, BLUE);
         DrawTextEx(uiFont, TextFormat("%lld", nodes[focal_node_id].account_id),
                    {cx - 30, cy + 30}, 16, 1, BLACK);
 
-        //draw neighbor nodes, colored by prediction
-        for (int i = 0; i < k; ++i) {
-            int nid = neighbors[i].id;
-            Color c = (nodes[nid].pred_label == 1) ? RED : GREEN; //red = predicted illicit, green = predicted licit
-            DrawCircle(neighbor_pos[i].x, neighbor_pos[i].y, 20, c);
-            DrawTextEx(uiFont, TextFormat("%lld", nodes[nid].account_id),
-                       {neighbor_pos[i].x - 30, neighbor_pos[i].y + 25}, 16, 1, BLACK);
+        //draw the shown neighbor nodes, colored by prediction (red = illicit, green = licit)
+        for (int j = 0; j < r_show; ++j) {
+            int nid = received[j].id;
+            DrawCircle(r_pos[j].x, r_pos[j].y, 20, nodes[nid].pred_label == 1 ? RED : GREEN);
+            DrawTextEx(uiFont, TextFormat("%lld", nodes[nid].account_id), {r_pos[j].x - 30, r_pos[j].y + 25}, 16, 1, BLACK);
         }
+        for (int j = 0; j < s_show; ++j) {
+            int nid = sent[j].id;
+            DrawCircle(s_pos[j].x, s_pos[j].y, 20, nodes[nid].pred_label == 1 ? RED : GREEN);
+            DrawTextEx(uiFont, TextFormat("%lld", nodes[nid].account_id), {s_pos[j].x - 30, s_pos[j].y + 25}, 16, 1, BLACK);
+        }
+
+        //side headers so it's clear we only show the top few of many, and which side is which
+        DrawTextEx(uiFont, TextFormat("RECEIVED  top %d / %d", r_show, total_in), {cx - radius - 30, cy - radius - 45}, 18, 1, DARKBLUE);
+        DrawTextEx(uiFont, TextFormat("SENT  top %d / %d", s_show, total_out),     {cx + radius - 90,  cy - radius - 45}, 18, 1, DARKBLUE);
 
         EndDrawing();
     }
