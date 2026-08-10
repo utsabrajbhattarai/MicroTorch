@@ -1,0 +1,2 @@
+precision,recall,f1,accuracy,auroc,TP,FP,TN,FN
+0.879617,0.707371,0.784146,0.961989,0.968721,643,88,8316,266

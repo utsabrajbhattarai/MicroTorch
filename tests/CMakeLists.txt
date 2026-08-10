@@ -25,6 +25,12 @@ add_executable(microtorch_tests
     test_mse_loss.cpp
     test_softmax_cross_entropy.cpp
 
+    #eval tests
+    test_eval_metrics.cpp
+
+    #gui export tests
+    test_gui_export.cpp
+
     #optimizer tests
     test_sgd.cpp
     test_adam.cpp
@@ -38,6 +44,10 @@ add_executable(microtorch_tests
 
     #gnn tests:
     test_gnn_model.cpp
+
+    #diffusion tests:
+    test_diffusion_model.cpp
+    test_noise_schedule.cpp
     
     #test logger:
     test_logger.cpp 

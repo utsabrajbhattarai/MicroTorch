@@ -7,3 +7,6 @@ target_link_libraries(gnn_train PRIVATE microtorch)
 
 add_executable(diffusion_train diffusion_train.cpp)
 target_link_libraries(diffusion_train PRIVATE microtorch)
+
+# gui/: raylib-based dashboard, reads CSV artifacts, no engine dependency
+add_subdirectory(gui)
