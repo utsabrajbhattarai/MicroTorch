@@ -45,3 +45,4 @@ training_log.csv
 
 #---- Temporary Output Files ------------------------------------------------------
 generated.csv
+frames.csv
