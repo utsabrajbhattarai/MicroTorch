@@ -1,22 +1,17 @@
 #pragma once
-#include "microtorch/Tensor.hpp"
-#include <vector>
+#include "microtorch/optim/optimizer.hpp"
 
 namespace microtorch {
 
-    // defining sgd class which stores pointer to tensor class and learning rate 
-    class SGD{
-        public:
-        SGD(const std::vector<TensorPtr> &params, double lr);
-        void step();   // each step of updating weight
-        void zero_grad();   //setting gradient to zero
+    //SGD: subtract lr * gradient from each parameter
+    class SGD : public Optimizer {
+    public:
+        SGD(const std::vector<TensorPtr>& params, double lr);
 
-        private:
-        std::vector<TensorPtr> params_;
-        double lr_;
+        void step() override;   //override the base's pure-virtual step
+
+    private:
+        double lr_;   //learning rate
     };
 
-    
-}
-
- 
+}  // namespace microtorch
