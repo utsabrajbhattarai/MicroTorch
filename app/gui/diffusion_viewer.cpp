@@ -34,9 +34,16 @@ int main() {
 
     //slider position and width:
     float slider_x = 100;     //left most part 
-    float slider_y = 830;   //vertical position (near the bottom of 900px window)
+    float slider_y = 840;   //vertical position (near the bottom of 900px window)
     float slider_w = 700;   //track width in pixels
-    float slider_value = 1.0f;        //0.0 = first frame (noise), 1.0 = last frame (shape)
+    float slider_value = 0.0f;        //0.0 = first frame (noise), 1.0 = last frame (shape)
+
+
+    //auto-play constraints
+    bool playing = false;      //stores true/false based on playing/not playing atm
+    int tick = 0;              //counts screen-frames to control play speed
+    const int TICKS_PER_STEP = 2;   //how many animation frame per screen frame?
+
 
     auto frames = load_frames("frames.csv");
     std::cout << "loaded " << frames.size() << " frames, "
@@ -54,16 +61,25 @@ int main() {
             max_range = std::max(max_range, std::abs(p.x));
             max_range = std::max(max_range, std::abs(p.y));
         }
-    float scale = (450.0f * 0.9f) / max_range;   //0.9 for leaving a  margin
+    float scale = (450.0f * 0.85f) / max_range;   //not completely 1 to leave some margin
 
 
     while (!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
+
         //slider input if mouse is dragging within the track's x-range, update value
         Rectangle track = { slider_x, slider_y, slider_w, 8 };   //the bar: x, y, width, height
         Vector2 mouse = GetMousePosition();
+
+
+        //play-pause input
+        Rectangle play_btn = { slider_x, slider_y - 50, 80, 30 };   //keeping this just above the slider
+        bool play_hovered = CheckCollisionPointRec(mouse, play_btn);    //is mouse over the button?
+        if (play_hovered && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) { //if pressed toggle it 
+            playing = !playing;   // toggle
+        }
 
         //are we holding the mouse button down anywhere near the track?
         if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) &&
@@ -74,6 +90,19 @@ int main() {
             slider_value = (mouse.x - slider_x) / slider_w;
             if (slider_value < 0.0f) slider_value = 0.0f;   //clamping  so it can't go past the ends
             if (slider_value > 1.0f) slider_value = 1.0f;
+        }
+
+        //auto-advance when playing
+        if (playing) {
+            tick++;
+            if (tick >= TICKS_PER_STEP) { //just a fps controlling mechanism 
+                tick = 0;
+                slider_value += 1.0f / (frames.size() - 1);   //step forward by one frame's worth
+                if (slider_value >= 1.0f) { //if final frame reached
+                    slider_value = 1.0f;
+                    playing = false;   //stopping at the end 
+                }
+            }
         }
 
         //based on slider_value 0-1 show the frame
@@ -87,13 +116,16 @@ int main() {
 
         for (const Vector2& p : frames[show]) {
             Vector2 s = to_screen(p.x, p.y, cx, cy, scale);
-            DrawCircle(s.x, s.y, 2.5f, BLUE);
+            DrawCircle(s.x, s.y, 2.5f, BLUE); //drawing each point as circles
         }
 
         DrawText(TextFormat("frame %d / %d", show, (int)frames.size() - 1), 20, 20, 20, DARKGRAY);
 
-        DrawRectangleRec(track, LIGHTGRAY);                                  //the track bar
-        float handle_x = slider_x + slider_value * slider_w;                 //handle position from value
+        DrawRectangleRec(play_btn, LIGHTGRAY);  //the play/pause button
+        DrawText(playing ? "Pause" : "Play", play_btn.x + 15, play_btn.y + 7, 18, BLACK);   //to display the state/toggle option
+
+        DrawRectangleRec(track, LIGHTGRAY);     //the track bar
+        float handle_x = slider_x + slider_value * slider_w;        //handle position from value
         DrawCircle(static_cast<int>(handle_x), static_cast<int>(slider_y + 4), 10, DARKGREEN);        //the draggable knob
 
 
