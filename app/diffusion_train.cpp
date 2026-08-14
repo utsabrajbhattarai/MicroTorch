@@ -51,7 +51,7 @@ Eigen::MatrixXd build_input(const Eigen::MatrixXd& x, int t, int k, int T){
 int main() {
     
     //loading/generating the toy data:
-    Eigen::MatrixXd x0 = make_spiral(N); //noise is already a default arg
+    Eigen::MatrixXd x0 = make_light_spiral(N); //noise is already a default arg
 
     //creating noise schedule
     NoiseSchedule ns = make_noise_schedule(T);
