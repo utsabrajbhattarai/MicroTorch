@@ -2,25 +2,15 @@
 
 namespace microtorch {
 
-    SGD :: SGD(const std::vector<TensorPtr> &params, double lr)
-    {
-        params_ = params;   //setting values from constructor to other variables
-        lr_ = lr;
-    }
+    //constructor: hand params up to the base class, store the learning rate
+    SGD::SGD(const std::vector<TensorPtr>& params, double lr)
+        : Optimizer(params), lr_(lr) {}
 
-    void SGD::step()
-    {
-        for(TensorPtr p : params_)
-        {
-            p->data  -= lr_ * p->grad; // changing weight a little (w = w0 - grad * lr)
+    //SGD update: each parameter moves against its gradient by lr
+    void SGD::step() {
+        for (auto& p : params_) {
+            p->data -= lr_ * p->grad;
         }
     }
 
-    void SGD::zero_grad()
-    {
-        for(TensorPtr p : params_)
-        {
-            p->zero_grad();  //set gradient to zero for replacement with new value
-        }
-    }
-}  
+}  // namespace microtorch
