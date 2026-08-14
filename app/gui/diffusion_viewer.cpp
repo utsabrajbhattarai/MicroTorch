@@ -57,6 +57,14 @@ int main() {
     InitWindow(900, 900, "MicroTorch Diffusion Viewer");
     SetTargetFPS(60);
 
+    //load each shape's FINAL frame once, just for the menu previews
+    //just keeping final shape and discarding all
+    std::vector<std::vector<Vector2>> previews;   //previews[i] = final frame of shapes[i]
+    for (const Shape& s : shapes) {
+        auto f = load_frames(s.file);
+        previews.push_back(f.empty() ? std::vector<Vector2>{} : f.back());   //keep only the last frame
+    }
+
     float cx = 450, cy = 450;   //center of window 
 
     //the currently-loaded shape's frames + its scale (empty until a card is clicked)
@@ -79,8 +87,26 @@ int main() {
 
                 bool hover = CheckCollisionPointRec(mouse, card);
                 DrawRectangleRec(card, hover ? LIGHTGRAY : RAYWHITE);   //highlight it when hovered
-                DrawRectangleLinesEx(card, 2, DARKGRAY);                 //boarder 
-                DrawText(shapes[i].name.c_str(), card.x + 20, card.y + 60, 24, DARKBLUE);
+                DrawRectangleLinesEx(card, 2, DARKGRAY);    //boarder 
+                DrawText(shapes[i].name.c_str(), card.x + 20, card.y + 15, 24, DARKBLUE);   //label near the top
+
+
+                //draw a mini preview of the shape's final frame inside the card
+                if (!previews[i].empty()) {
+                    //finding this preview's range so we can fit it in the card
+                    float pmax = 1.0f;
+                    for (const Vector2& p : previews[i]) {
+                        pmax = std::max(pmax, std::abs(p.x));
+                        pmax = std::max(pmax, std::abs(p.y));
+                    }
+                    float pcx = card.x + card.width / 2;    //card center x
+                    float pcy = card.y + card.height / 2;   //card center y
+                    float pscale = (card.height * 0.4f) / pmax;   //fit within 40% of card height
+                    for (const Vector2& p : previews[i]) {
+                        Vector2 s = to_screen(p.x, p.y, pcx, pcy, pscale);
+                        DrawCircle(s.x, s.y, 1.5f, Fade(DARKBLUE, 0.5f));
+                    }
+                }
 
                 if (hover && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                     frames = load_frames(shapes[i].file);   //load that shape's frames
