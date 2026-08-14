@@ -5,11 +5,12 @@
 #include "microtorch/optim/adam.hpp"
 #include "microtorch/diffusion/noise_schedule.hpp"
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include <random>
 #include <string>
-#include <cmath>
 
 using namespace microtorch;
 
@@ -18,13 +19,18 @@ const int T = 1000; //number of timestamps
 const int hidden = 256;  //number of hidden neurons
 const double lr = 0.0005;    //learning rate of adam optimizer
 
-const int MAX_EPOCH = 1200;
+const int MAX_EPOCH = 1500;
 const int TIMESTEPS_PER_EPOCH = 16;   //random t's per step
 const int K = 4;   //number of sin/cos frequency pairs => time embedding is 2*K wide, so input width is 2 + 2*K = 10
 
 
-//sampling loop for generating sample from predicted noise
-Eigen::MatrixXd generate(DiffusionModel& model, const NoiseSchedule& ns, int n, int T, std::mt19937& rng);
+//** NOTE THAT WE ARE CHANGING THIS MANUALLY FOR EVERY SHAPE **/
+//loading/generating the toy data:
+Eigen::MatrixXd x0 = make_two_moons(N); //noise is already a default arg
+const std::string SHAPE_NAME = "two_moons";   //per run changing this to a certain shape to directly save shape in frames_shape path
+
+//sampling loop for generating sample from predicted noise and generated a frame by frame points
+std::vector<Eigen::MatrixXd> generate(DiffusionModel& model, const NoiseSchedule& ns, int n, int T, std::mt19937& rng);
 
 
 //this actually turns one scalar timestep t into 2*k sin/cos waves so the net can tell noise levels apart (like transformer positional encoding)
@@ -49,9 +55,6 @@ Eigen::MatrixXd build_input(const Eigen::MatrixXd& x, int t, int k, int T){
 }
 
 int main() {
-    
-    //loading/generating the toy data:
-    Eigen::MatrixXd x0 = make_light_spiral(N); //noise is already a default arg
 
     //creating noise schedule
     NoiseSchedule ns = make_noise_schedule(T);
@@ -63,12 +66,10 @@ int main() {
     Adam opt(model.parameters(), lr);
 
     //generator for timstep pick and forward noise
-    std::mt19937 rng(95);
+    std::mt19937 rng(120);
 
     //uniform distribution for noise t at each epoch
     std::uniform_int_distribution<int> t_dist(0, T - 1);
-
-
 
 
     //training loop:
@@ -111,14 +112,17 @@ int main() {
     }
 
     //sampling function:
-    Eigen::MatrixXd generated = generate(model, ns, N, T, rng);
-    std::ofstream out("generated.csv"); //saving points to a csv file
-    for (int i = 0; i < N; i++){
-        out << generated(i, 0) << "," << generated(i, 1) << "\n";
+    std::vector<Eigen::MatrixXd> frames = generate(model, ns, N, T, rng);
+
+    //dump every frame: columns are frame_index,x,y  (one row per point per frame)
+    std::filesystem::create_directories("frames");   //doesnt recreate if already created a c++-17 typa code
+    std::ofstream out("frames/frames_" + SHAPE_NAME + ".csv");  //path for final file
+    for (size_t f = 0; f < frames.size(); f++){
+        for (int i = 0; i < N; i++){
+            out << f << "," << frames[f](i, 0) << "," << frames[f](i, 1) << "\n";
+        }
     }
     out.close();
-
-
 
     return 0;
 }
@@ -127,7 +131,9 @@ int main() {
 
 
 //sampling logic:
-Eigen::MatrixXd generate(DiffusionModel& model, const NoiseSchedule& ns, int n, int T, std::mt19937& rng){
+std::vector<Eigen::MatrixXd> generate(DiffusionModel& model, const NoiseSchedule& ns, int n, int T, std::mt19937& rng){
+
+    std::vector<Eigen::MatrixXd> frames;   //basically a (n,2) snapshot per timestep
 
     //the final x to return
     Eigen::MatrixXd x(n,2);
@@ -139,6 +145,8 @@ Eigen::MatrixXd generate(DiffusionModel& model, const NoiseSchedule& ns, int n, 
         }
     }
 
+    frames.push_back(x);   //frame 0 = pure noise
+
     for (int t = T - 1; t >= 0; t--) {
 
         //same like forward creating the input Tensor
@@ -148,7 +156,7 @@ Eigen::MatrixXd generate(DiffusionModel& model, const NoiseSchedule& ns, int n, 
 
         TensorPtr pred = model.forward(input_tensor); //prediction
 
-        //Reversing the noise:
+        //Reversing the noise: //mathematical formulas:
         double alpha_t = ns.alpha[t];
         double alpha_bar_t = ns.alpha_bar[t];
         double beta_t = ns.beta[t];
@@ -173,7 +181,10 @@ Eigen::MatrixXd generate(DiffusionModel& model, const NoiseSchedule& ns, int n, 
             x = mean; //no noise added in last step;
         }
 
+        if (t % 4 == 0 || t == 0) { //only save every 4th step to reduce the file size and processing speed enhancement also 0th or the last step too 
+            frames.push_back(x); //snapshot this timestep also
+        }
 
     }
-    return x;
+    return frames;   //return all the frames, not just final x
 }
