@@ -5,11 +5,12 @@
 #include "microtorch/optim/adam.hpp"
 #include "microtorch/diffusion/noise_schedule.hpp"
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include <random>
 #include <string>
-#include <cmath>
 
 using namespace microtorch;
 
@@ -22,6 +23,9 @@ const int MAX_EPOCH = 2000;
 const int TIMESTEPS_PER_EPOCH = 16;   //random t's per step
 const int K = 4;   //number of sin/cos frequency pairs => time embedding is 2*K wide, so input width is 2 + 2*K = 10
 
+//loading/generating the toy data:
+Eigen::MatrixXd x0 = make_light_spiral(N); //noise is already a default arg
+const std::string SHAPE_NAME = "simple_spiral";   //per run changing this to a certain shape to directly save shape in frames_shape path
 
 //sampling loop for generating sample from predicted noise and generated a frame by frame points
 std::vector<Eigen::MatrixXd> generate(DiffusionModel& model, const NoiseSchedule& ns, int n, int T, std::mt19937& rng);
@@ -49,9 +53,6 @@ Eigen::MatrixXd build_input(const Eigen::MatrixXd& x, int t, int k, int T){
 }
 
 int main() {
-    
-    //loading/generating the toy data:
-    Eigen::MatrixXd x0 = make_light_spiral(N); //noise is already a default arg
 
     //creating noise schedule
     NoiseSchedule ns = make_noise_schedule(T);
@@ -67,8 +68,6 @@ int main() {
 
     //uniform distribution for noise t at each epoch
     std::uniform_int_distribution<int> t_dist(0, T - 1);
-
-
 
 
     //training loop:
@@ -114,21 +113,14 @@ int main() {
     std::vector<Eigen::MatrixXd> frames = generate(model, ns, N, T, rng);
 
     //dump every frame: columns are frame_index,x,y  (one row per point per frame)
-    std::ofstream out("frames.csv");
+    std::filesystem::create_directories("frames");   //doesnt recreate if already created a c++-17 typa code
+    std::ofstream out("frames/frames_" + SHAPE_NAME + ".csv");  //path for final file
     for (size_t f = 0; f < frames.size(); f++){
         for (int i = 0; i < N; i++){
             out << f << "," << frames[f](i, 0) << "," << frames[f](i, 1) << "\n";
         }
     }
     out.close();
-
-    //also keep the final frame alone, for quick eyeballing in excel
-    std::ofstream out_final("generated.csv");
-    for (int i = 0; i < N; i++){
-        out_final << frames.back()(i, 0) << "," << frames.back()(i, 1) << "\n";
-    }
-    out_final.close();
-
 
     return 0;
 }
