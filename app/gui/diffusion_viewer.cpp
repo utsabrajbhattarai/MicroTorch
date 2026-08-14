@@ -79,6 +79,12 @@ int main() {
         //based on slider_value 0-1 show the frame
         int show = static_cast<int>(slider_value * (frames.size() - 1));
 
+        //faintly drawing the final shape outline/overlay
+        for (const Vector2& p : frames.back()) {
+            Vector2 s = to_screen(p.x, p.y, cx, cy, scale);
+            DrawCircle(s.x, s.y, 2.0f, Fade(GRAY, 0.15f));   //faint, slightly smaller
+        }
+
         for (const Vector2& p : frames[show]) {
             Vector2 s = to_screen(p.x, p.y, cx, cy, scale);
             DrawCircle(s.x, s.y, 2.5f, BLUE);
