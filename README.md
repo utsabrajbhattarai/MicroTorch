@@ -21,7 +21,8 @@ finite differences, and both demos train and produce results.
 - Operations, each gradient-checked: `matmul`, `broadcast_add`, `add`, `relu`,
   `sum`, `mean`, `mse_loss`, `neighbor_aggregation` (sparse), and the fused
   `softmax_cross_entropy` (with a masked overload for semi-supervised labels)
-- Optimizers: `SGD` and `Adam`, validated on a toy quadratic
+- Optimizers: `SGD` and `Adam`, sharing an abstract `Optimizer` base class
+  (pure-virtual `step()`, shared `zero_grad()`), validated on a toy quadratic
 - A `gradient_check` harness with a Catch2 test per op — including a
   deliberately broken op, so the suite proves the harness *catches* wrong
   gradients, not just that it passes correct ones
@@ -78,7 +79,7 @@ include/microtorch/   public headers
   gradient_check.hpp  finite-difference verification
   ops/                matmul, broadcast_add, add, relu, reduction,
                       mse_loss, neighbor_aggregation, softmax_cross_entropy
-  optim/              sgd, adam
+  optim/              optimizer (abstract base), sgd, adam
   gnn/                node-classification model
   diffusion/          denoiser + noise schedule
   data/               data_loader (Elliptic) + toy_data (2D shapes)
