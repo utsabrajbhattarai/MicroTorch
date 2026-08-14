@@ -31,6 +31,13 @@ Vector2 to_screen(float x, float y, float cx, float cy, float scale) {
 }
 
 int main() {
+
+    //slider position and width:
+    float slider_x = 100;     //left most part 
+    float slider_y = 830;   //vertical position (near the bottom of 900px window)
+    float slider_w = 700;   //track width in pixels
+    float slider_value = 1.0f;        //0.0 = first frame (noise), 1.0 = last frame (shape)
+
     auto frames = load_frames("frames.csv");
     std::cout << "loaded " << frames.size() << " frames, "
               << (frames.empty() ? 0 : frames[0].size()) << " points each\n";
@@ -49,11 +56,28 @@ int main() {
         }
     float scale = (450.0f * 0.9f) / max_range;   //0.9 for leaving a  margin
 
-    int show = static_cast<int>(frames.size() - 1);        //STEP 1: just show the LAST frame (the shape)
 
     while (!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(RAYWHITE);
+
+        //slider input if mouse is dragging within the track's x-range, update value
+        Rectangle track = { slider_x, slider_y, slider_w, 8 };   //the bar: x, y, width, height
+        Vector2 mouse = GetMousePosition();
+
+        //are we holding the mouse button down anywhere near the track?
+        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) &&
+            mouse.x >= slider_x - 10 && mouse.x <= slider_x + slider_w + 10 &&
+            mouse.y >= slider_y - 20 && mouse.y <= slider_y + 20)//note that also conditioning for nearer so thats why range of +-10/20
+            {
+            //map the mouse's x position to a 0..1 value along the track
+            slider_value = (mouse.x - slider_x) / slider_w;
+            if (slider_value < 0.0f) slider_value = 0.0f;   //clamping  so it can't go past the ends
+            if (slider_value > 1.0f) slider_value = 1.0f;
+        }
+
+        //based on slider_value 0-1 show the frame
+        int show = static_cast<int>(slider_value * (frames.size() - 1));
 
         for (const Vector2& p : frames[show]) {
             Vector2 s = to_screen(p.x, p.y, cx, cy, scale);
@@ -61,6 +85,11 @@ int main() {
         }
 
         DrawText(TextFormat("frame %d / %d", show, (int)frames.size() - 1), 20, 20, 20, DARKGRAY);
+
+        DrawRectangleRec(track, LIGHTGRAY);                                  //the track bar
+        float handle_x = slider_x + slider_value * slider_w;                 //handle position from value
+        DrawCircle(static_cast<int>(handle_x), static_cast<int>(slider_y + 4), 10, DARKGREEN);        //the draggable knob
+
 
         EndDrawing();
     }
