@@ -5,17 +5,22 @@
 #include "microtorch/ops.hpp"
 #include "microtorch/data/data_loader.hpp"
 #include "microtorch/optim/adam.hpp"
+#include "microtorch/eval/eval_metrics.hpp"   //single source of truth for precision/recall/f1/accuracy/auroc
+#include "microtorch/gui/gui_export.hpp"      //writes the csv artifacts the raylib dashboard reads
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <random>
 #include <string>
+#include <unordered_map>
 
-const int EPOCH_N = 70;  
+const int EPOCH_N = 70;
 
 using namespace microtorch;
 
-double compute_auroc(const std::vector<double>& scores, const std::vector<bool>& is_illicit); //function that returns AUROC score
 
+//builds the four gui_artifacts/*.csv the raylib dashboard reads, from the trained model's final logits
+void export_gui_artifacts(const EllipticData& data, const TensorPtr& final_logits, const Eigen::MatrixXd& test_mask);
 
 //runs one seed: split with this seed to train GNN and MLP (for the purpose of analyzing variation of loss with choice of seed (hyperparameter tuning))
 void run_seed(unsigned seed, const EllipticData& data, const TensorPtr& X, int N, int F, double& gnn_auroc, double& mlp_auroc);
@@ -169,7 +174,7 @@ double run_experiment(bool use_graph, const EllipticData& data, const TensorPtr&
     TensorPtr final_logits = model.forward(data.A, X, use_graph);   //final forward for evaluation purposes
 
     std::vector<double> scores; //logits2-logits1 scores
-    std::vector<bool> is_illicit; //calculates if its illicit or not
+    std::vector<int> is_illicit; //calculates if its illicit or not (int, so it feeds the shared auroc() directly)
 
     for (int r : test_rows) {
         bool pred_illicit  = final_logits->data(r, 1) > final_logits->data(r, 0);   //predicted positives (softmax is monotonics so logits is good enough)
@@ -182,7 +187,7 @@ double run_experiment(bool use_graph, const EllipticData& data, const TensorPtr&
 
         //for auroc function:
         scores.push_back(final_logits->data(r, 1) - final_logits->data(r, 0));  //illicit-ness/ score of how illicit it is
-        is_illicit.push_back(data.Y(r, 1) == 1.0);  //illicit or not bool
+        is_illicit.push_back(truth_illicit ? 1 : 0);  //illicit or not
     }
     //metrics used: (conditions are just for sake of guarding division by 0)
     double precision = (TP + FP > 0) ? (double)TP / (TP + FP) : 0.0; //out of all guessed illicit how many were True?
@@ -190,7 +195,10 @@ double run_experiment(bool use_graph, const EllipticData& data, const TensorPtr&
     double f1        = (precision + recall > 0)
                     ? 2 * precision * recall / (precision + recall) : 0.0;  //way to calculate f1 score (harmonic mean of precision and recall)
     double accuracy  = (double)(TP + TN) / test_rows.size();
-    double auroc = compute_auroc(scores, is_illicit);   //calling auroc function
+    //shared implementation from eval/eval_metrics.cpp -- same one write_metrics_csv uses,
+    //so the console AUROC and the metrics.csv AUROC can never drift apart.
+    //named auc_score, not auroc, so the free function stays reachable here.
+    double auc_score = auroc(scores, is_illicit);
 
 
 
@@ -199,10 +207,14 @@ double run_experiment(bool use_graph, const EllipticData& data, const TensorPtr&
     std::cout << "TP=" << TP << " FP=" << FP << " TN=" << TN << " FN=" << FN << "\n";
     std::cout << "precision " << precision << "  recall " << recall
             << "  F1 " << f1 << "  accuracy " << accuracy << "\n";
-    std::cout << "AUROC " << auroc << "\n";
+    std::cout << "AUROC " << auc_score << "\n";
 
+    //only the GNN run produces the dashboard artifacts; the MLP run is the ablation baseline
+    if (use_graph) {
+        export_gui_artifacts(data, final_logits, test_mask);
+    }
 
-    return auroc;
+    return auc_score;
 }
 
 
@@ -213,43 +225,88 @@ double run_experiment(bool use_graph, const EllipticData& data, const TensorPtr&
 
 
 //*************************************************************************************//
-//complete auroc score:
-double compute_auroc(const std::vector<double>& scores, const std::vector<bool>& is_illicit){
-    //pairing each score and is label:
-    std::vector<std::pair<double,bool>> score_pair;
+//STEP 6: dashboard artifacts
+//
+//turns the trained model's final logits into the four csvs app/gui/gnn_dashboard.cpp reads
+//out of gui_artifacts/. every node in the features file gets a row in nodes.csv (so the
+//dashboard can show unlabelled nodes too), while metrics.csv is scored only on labelled
+//test nodes, which is the same population run_experiment prints to the console.
+void export_gui_artifacts(const EllipticData& data, const TensorPtr& final_logits,
+                          const Eigen::MatrixXd& test_mask) {
 
-    for( size_t i =0; i<scores.size(); i++){
-        score_pair.emplace_back(scores[i], is_illicit[i]);
+    std::cout << "\n[GUI Export] Exporting predictions to 'gui_artifacts/'...\n";
+
+    int total_nodes = data.X.rows();
+
+    std::vector<NodeVisData> vis_nodes;
+    vis_nodes.reserve(total_nodes);   // one row per node in the features file
+
+    std::vector<int> eval_pred, eval_act;    // labelled test nodes only, for metrics.csv
+    std::vector<double> eval_scores;
+
+    for (int i = 0; i < total_nodes; ++i) {
+        //softmax over the two logits, shifted by the max for numerical stability
+        double l0 = final_logits->data(i, 0);
+        double l1 = final_logits->data(i, 1);
+        double max_l = std::max(l0, l1);
+        double prob1 = std::exp(l1 - max_l) / (std::exp(l0 - max_l) + std::exp(l1 - max_l));
+
+        int pred_lbl = (prob1 >= 0.5) ? 1 : 0;   //predicted label at the 0.5 threshold
+
+        int true_lbl = -1;                       //-1 stays as "unknown", matching the raw dataset
+        if      (data.Y(i, 1) == 1.0) true_lbl = 1;
+        else if (data.Y(i, 0) == 1.0) true_lbl = 0;
+
+        int is_test_node = (test_mask(i, 0) == 1.0) ? 1 : 0;   //1 for held-out nodes, 0 for train
+        std::string tx_str = (i < (int)data.tx_ids.size()) ? data.tx_ids[i] : std::to_string(i);
+
+        vis_nodes.push_back({i, tx_str, prob1, pred_lbl, true_lbl, is_test_node});
+
+        if (is_test_node && true_lbl != -1) {
+            eval_pred.push_back(pred_lbl);
+            eval_act.push_back(true_lbl);
+            eval_scores.push_back(prob1);   //monotonic in (l1 - l0), so auroc matches the console
+        }
     }
 
-    //using sort lambda function to sort scores based on .first(score)
-    std::sort(score_pair.begin(), score_pair.end(),[]
-              (const auto& a, const auto &b){
-                return a.first < b.first;
-              }
-    );
+    //roll nodes up into accounts: one account per txid, risk = its riskiest node
+    std::unordered_map<std::string, AccountRecord> account_map;
+    std::unordered_map<std::string, double> account_max_prob;
 
-
-
-    //assigning ranks and summing the illicit ranks:
-    int i = 1, n_illicit = 0, n_licit =0 ;
-    double R = 0.0;   //a running sum of illicit ranks
-    for (const std::pair<double,bool>& x : score_pair){
-        if( x.second ){
-            R += static_cast<int>(i);  //ranking running sum
-            n_illicit++;    //number of illicit case
-        }
-        else{
-            n_licit++;  //numer of licit case
-        }
-        i++;
+    for (const auto& n : vis_nodes) {
+        auto& rec = account_map[n.account_id];
+        rec.account_id = n.account_id;
+        rec.num_nodes += 1;
+        if (n.pred_label == 1) rec.num_illicit_pred += 1;
+        account_max_prob[n.account_id] = std::max(account_max_prob[n.account_id], n.pred_prob);
     }
 
-    //applying the Mann-Whitney U statistic formula for calculaitng aucroc score:
-    double AUROC = (R - static_cast<double>(n_illicit) * (static_cast<double>(n_illicit) + 1) / 2.0) / (static_cast<double>(n_illicit) * n_licit);
+    std::vector<AccountRecord> vis_accounts;
+    vis_accounts.reserve(account_map.size());
+    for (const auto& pair : account_map) {
+        AccountRecord rec = pair.second;
+        rec.risk_score = account_max_prob[rec.account_id];
+        vis_accounts.push_back(rec);
+    }
 
-    return AUROC;
+    //riskiest first. deliberately no tie-break on account_id: accounts with an identical
+    //risk_score are equally ranked either way, and adding one reorders ~390 tied rows
+    //relative to the committed accounts.csv for no gain.
+    std::sort(vis_accounts.begin(), vis_accounts.end(),
+              [](const AccountRecord& a, const AccountRecord& b) {
+                  return a.risk_score > b.risk_score;
+              });
 
+    for (size_t r = 0; r < vis_accounts.size(); ++r) {
+        vis_accounts[r].rank = static_cast<int>(r + 1);   //ranks 1..n by risk position
+    }
+
+    export_all_gui_artifacts("gui_artifacts", eval_pred, eval_act, eval_scores,
+                             data.raw_edges, vis_nodes, vis_accounts);
+
+    std::cout << "[GUI Export] Wrote " << vis_nodes.size() << " nodes, "
+              << data.raw_edges.size() << " edges, "
+              << vis_accounts.size() << " accounts to ./gui_artifacts/\n";
 }
 
 

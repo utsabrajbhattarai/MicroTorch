@@ -210,6 +210,11 @@ EllipticData load_elliptic(const string& features_path, const string& classes_pa
         throw runtime_error("Loaded features matrix is empty!");  // if 0 rows, file is empty
     }
 
+    data.tx_ids.resize(N);  // resizing tx_ids vector from 0 to N for storing n transaction ids.
+    for (const auto& pair : txid_to_row) {
+        data.tx_ids[pair.second] = std::to_string(pair.first);   // storing transaction ids in tx_ids
+    }
+
     data.X = raw_X.rightCols(raw_X.cols() - 2);  // x member variable(eigenmatrixxd) inside struct data now holds (N, 166) matrix. rightCols(m) takes m cols from right side. as we dont require first two cols so, now x has third to last cols in each row of features file
     
     data.Y = Eigen::MatrixXd::Zero(N, 2);  // y member variable(eigenmatrix) has n rows and two cols, 0th col for licit, 1st col for illicit
@@ -253,6 +258,7 @@ EllipticData load_elliptic(const string& features_path, const string& classes_pa
     class_file.close();
 
     vector<pair<int, int>> mapped_edges = load_edges(edges_path, txid_to_row, true);
+    data.raw_edges = mapped_edges;  // keep the directed edge list for the gui before A symmetrises it below
 
     //  Build Sparse Matrix A with Self-Loops and Symmetric Edges
     vector<Eigen::Triplet<double>> triplets;
