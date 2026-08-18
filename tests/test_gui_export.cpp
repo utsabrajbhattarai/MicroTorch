@@ -25,13 +25,17 @@ TEST_CASE("write_metrics_csv produces valid CSV format", "[gui_export]") {
     std::filesystem::remove(path);
 }
 
-TEST_CASE("write_edges_csv filters self-loops and backward edges", "[gui_export]") {
+// the dashboard's get_neighbors() reads src/dst to tell "focal sent to X" from "X sent to focal",
+// so the writer has to pass the edge list through untouched -- same order, same direction, no drops.
+// the old src<dst filter silently deleted every backward edge; on the elliptic edgelist that is
+// 110,690 of 234,355, and it deduplicated nothing (that file has no reciprocal pairs at all).
+TEST_CASE("write_edges_csv preserves edge direction and count", "[gui_export]") {
     std::string path = "test_edges.csv";
     std::vector<std::pair<int,int>> edges = {
-        {0, 1},
-        {1, 0},
+        {0, 1},   // forward
+        {1, 0},   // backward: a distinct edge, not a duplicate of {0,1}
         {2, 3},
-        {2, 2}
+        {5, 4}    // backward, would have been dropped by the old filter
     };
 
     write_edges_csv(path, edges);
@@ -49,9 +53,11 @@ TEST_CASE("write_edges_csv filters self-loops and backward edges", "[gui_export]
         rows.push_back(line);
     }
 
-    REQUIRE(rows.size() == 2);
+    REQUIRE(rows.size() == 4);      // nothing dropped
     REQUIRE(rows[0] == "0,1");
-    REQUIRE(rows[1] == "2,3");
+    REQUIRE(rows[1] == "1,0");      // direction kept, and distinct from row 0
+    REQUIRE(rows[2] == "2,3");
+    REQUIRE(rows[3] == "5,4");      // src > dst survives
 
     file.close();
     std::filesystem::remove(path);
