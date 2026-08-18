@@ -12,8 +12,10 @@ void write_edges_csv(const std::string& path,
 
     out << "src_node_id,dst_node_id\n";
     for (const auto& edge : edges) {
-        if (edge.first < edge.second)  // only write edges in one direction to avoid duplicates
-            out << edge.first << "," << edge.second << "\n";
+        // keep the real txId1->txId2 order so the dashboard can tell sender from receiver.
+        // the old src<dst filter threw away direction AND ~half the edges, which broke
+        // get_neighbors()'s incoming/outgoing arrows in gnn_dashboard.
+        out << edge.first << "," << edge.second << "\n";
     }
 }
 

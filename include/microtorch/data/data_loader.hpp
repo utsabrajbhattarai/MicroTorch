@@ -21,6 +21,8 @@ namespace microtorch{
     Eigen::MatrixXd X;
     Eigen::MatrixXd Y;
     std::vector<int> labeled_rows;
+    std::vector<std::string> tx_ids;    // row index -> original txid, so the gui can label a node by its real account
+    std::vector<std::pair<int, int>> raw_edges;  // pre-symmetrisation edges, keeps the real sender->receiver direction A throws away
     };
 
     EllipticData load_elliptic(const std::string& features_path, const std::string& classes_path, const std::string& edges_path);
