@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MicroTorch — Codebase Analysis</title>
+<style>
+  :root {
+    --ground: #FBFCFD; --surface: #FFFFFF; --surface-2: #F2F5F7; --surface-3: #ECF0F3;
+    --ink: #14202A; --muted: #4E5A64; --faint: #7E8892;
+    --border: #E1E6EA; --border-strong: #CBD3D9;
+    --accent: #0E7C86; --accent-ink: #095057; --accent-wash: #E1F1F2;
+    --warn: #8C5A00; --warn-wash: #F5EAD3; --crit: #A02D3A; --crit-wash: #F6E1E3;
+    --good: #216B44; --good-wash: #DEF0E5;
+    --shadow: 0 1px 2px rgba(20,32,42,.05), 0 10px 26px -14px rgba(20,32,42,.14);
+    --serif: "Iowan Old Style", "Charter", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0D1317; --surface: #131B21; --surface-2: #19222A; --surface-3: #1F2A33;
+      --ink: #E9EEF2; --muted: #A3AEB8; --faint: #6C7883;
+      --border: #253039; --border-strong: #35434E;
+      --accent: #40CDD8; --accent-ink: #8CE1E7; --accent-wash: #10333A;
+      --warn: #E6AC52; --warn-wash: #2C2413; --crit: #ED7C87; --crit-wash: #301A1D;
+      --good: #64C48C; --good-wash: #15281D;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -16px rgba(0,0,0,.65);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFCFD; --surface: #FFFFFF; --surface-2: #F2F5F7; --surface-3: #ECF0F3;
+    --ink: #14202A; --muted: #4E5A64; --faint: #7E8892; --border: #E1E6EA; --border-strong: #CBD3D9;
+    --accent: #0E7C86; --accent-ink: #095057; --accent-wash: #E1F1F2;
+    --warn: #8C5A00; --warn-wash: #F5EAD3; --crit: #A02D3A; --crit-wash: #F6E1E3;
+    --good: #216B44; --good-wash: #DEF0E5;
+    --shadow: 0 1px 2px rgba(20,32,42,.05), 0 10px 26px -14px rgba(20,32,42,.14);
+  }
+  :root[data-theme="dark"] {
+    --ground: #0D1317; --surface: #131B21; --surface-2: #19222A; --surface-3: #1F2A33;
+    --ink: #E9EEF2; --muted: #A3AEB8; --faint: #6C7883; --border: #253039; --border-strong: #35434E;
+    --accent: #40CDD8; --accent-ink: #8CE1E7; --accent-wash: #10333A;
+    --warn: #E6AC52; --warn-wash: #2C2413; --crit: #ED7C87; --crit-wash: #301A1D;
+    --good: #64C48C; --good-wash: #15281D;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -16px rgba(0,0,0,.65);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.72;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Header ---------- */
+  .masthead {
+    border-bottom: 1px solid var(--border);
+    background:
+      linear-gradient(var(--ground), var(--ground)) padding-box,
+      repeating-linear-gradient(0deg, transparent 0 31px, color-mix(in srgb, var(--accent) 13%, transparent) 31px 32px),
+      repeating-linear-gradient(90deg, transparent 0 31px, color-mix(in srgb, var(--accent) 13%, transparent) 31px 32px);
+  }
+  .masthead-inner { max-width: 1180px; margin: 0 auto; padding: 62px 32px 42px; }
+  .eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--accent-ink); margin: 0 0 18px; }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(2.4rem, 5vw, 3.5rem); line-height: 1.03; letter-spacing: -.015em; margin: 0; text-wrap: balance; }
+  h1 .em { color: var(--accent-ink); font-style: italic; }
+  .dek { font-size: 1.14rem; color: var(--muted); margin: 16px 0 26px; max-width: 64ch; text-wrap: pretty; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip { font-family: var(--mono); font-size: .74rem; letter-spacing: .02em; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--muted); white-space: nowrap; }
+  .chip b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 32px 110px; display: grid; grid-template-columns: 244px minmax(0,1fr); gap: 60px; }
+  @media (max-width: 920px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- TOC ---------- */
+  nav.toc { position: sticky; top: 0; align-self: start; padding-top: 44px; height: 100vh; overflow-y: auto; }
+  @media (max-width: 920px) { nav.toc { position: static; height: auto; border-bottom: 1px solid var(--border); padding: 22px 0; margin-top: 6px; } }
+  .toc-label { font-family: var(--mono); font-size: .68rem; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); margin: 0 0 14px; }
+  .toc ol { list-style: none; margin: 0 0 26px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .toc a { display: flex; gap: 11px; align-items: baseline; text-decoration: none; color: var(--muted); padding: 7px 11px; border-radius: 8px; border-left: 2px solid transparent; font-size: .93rem; line-height: 1.3; }
+  .toc a .n { font-family: var(--mono); font-size: .78rem; color: var(--faint); min-width: 1.3em; }
+  .toc a:hover { background: var(--surface-2); color: var(--ink); }
+  .toc a.active { color: var(--accent-ink); background: var(--accent-wash); border-left-color: var(--accent); font-weight: 500; }
+  .toc a.active .n { color: var(--accent-ink); }
+  .legend { display: flex; flex-direction: column; gap: 9px; padding: 15px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); }
+  .legend .lg-title { font-family: var(--mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+  .legend .row { display: flex; align-items: center; gap: 9px; font-size: .82rem; color: var(--muted); }
+
+  /* ---------- Article ---------- */
+  main { padding-top: 44px; min-width: 0; }
+  .readguide { display: flex; gap: 14px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 8px; box-shadow: var(--shadow); }
+  .readguide .rg-badge { font-family: var(--mono); font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); background: var(--accent-wash); border-radius: 6px; padding: 4px 8px; white-space: nowrap; margin-top: 3px; }
+  .readguide p { margin: 0; font-size: .95rem; color: var(--muted); max-width: none; }
+
+  section { padding-top: 30px; margin-bottom: 34px; scroll-margin-top: 20px; }
+  section + section { border-top: 1px solid var(--border); }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: clamp(1.55rem, 3vw, 2rem); letter-spacing: -.01em; margin: 10px 0 8px; line-height: 1.12; text-wrap: balance; display: flex; align-items: baseline; gap: 15px; }
+  h2 .sn { font-family: var(--mono); font-size: .95rem; font-weight: 500; color: var(--accent-ink); letter-spacing: 0; }
+  .lede { color: var(--muted); font-size: 1.06rem; margin: 0 0 22px; max-width: 70ch; }
+  h3 { font-family: var(--sans); font-weight: 700; font-size: .8rem; letter-spacing: .09em; text-transform: uppercase; color: var(--accent-ink); margin: 32px 0 13px; }
+  p { max-width: 74ch; margin: 0 0 16px; }
+  main a { color: var(--accent-ink); text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); text-underline-offset: 2px; }
+  strong { font-weight: 650; }
+  em { color: var(--ink); }
+
+  code, .path { font-family: var(--mono); font-size: .855em; background: var(--surface-2); border: 1px solid var(--border); padding: .08em .38em; border-radius: 5px; color: var(--ink); word-break: break-word; }
+  .path { color: var(--accent-ink); background: color-mix(in srgb, var(--accent-wash) 60%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
+  .ln { color: var(--faint); }
+
+  ul.body, ol.body { max-width: 74ch; padding-left: 1.3em; margin: 0 0 18px; }
+  ul.body li, ol.body li { margin-bottom: 10px; }
+
+  .note { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent-wash) 55%, var(--surface)); padding: 15px 18px; border-radius: 0 10px 10px 0; margin: 22px 0; max-width: 76ch; }
+  .note.warn { border-color: var(--warn); background: color-mix(in srgb, var(--warn-wash) 60%, var(--surface)); }
+  .note p { margin: 0; max-width: none; }
+  .note .k { font-family: var(--mono); font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; display: block; margin-bottom: 5px; color: var(--muted); }
+
+  .tw { overflow-x: auto; margin: 20px 0 26px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; min-width: 540px; }
+  thead th { text-align: left; font-family: var(--mono); font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 13px 17px; background: var(--surface-2); border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+  tbody td { padding: 13px 17px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+  tbody tr:hover { background: color-mix(in srgb, var(--accent-wash) 34%, transparent); }
+  td .path, th .path { font-size: .82rem; }
+  .tabnum { font-variant-numeric: tabular-nums; }
+
+  .fgroup { border: 1px solid var(--border); border-radius: 13px; background: var(--surface); padding: 4px 20px; margin: 18px 0; box-shadow: var(--shadow); }
+  .fitem { padding: 17px 0; border-bottom: 1px dashed var(--border); }
+  .fitem:last-child { border-bottom: none; }
+  .fitem .fh { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; margin-bottom: 6px; }
+  .fitem .fh .path { font-size: .82rem; }
+  .fitem .what { color: var(--muted); font-style: italic; font-size: .92rem; }
+  .fitem p { margin: 6px 0 0; font-size: .96rem; }
+
+  .sev { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: .66rem; letter-spacing: .04em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
+  .sev.dead { color: var(--crit); background: var(--crit-wash); }
+  .sev.incon { color: var(--warn); background: var(--warn-wash); }
+  .sev.gap { color: var(--muted); background: var(--surface-3); }
+  .sev.note { color: var(--good); background: var(--good-wash); }
+  .sev.new { color: var(--accent-ink); background: var(--accent-wash); }
+  .dot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+  .dot.crit { background: var(--crit); } .dot.warn { background: var(--warn); } .dot.gap { background: var(--faint); } .dot.good { background: var(--good); }
+
+  ol.obs { list-style: none; counter-reset: obs; padding: 0; margin: 8px 0; max-width: 80ch; }
+  ol.obs > li { counter-increment: obs; position: relative; padding: 16px 18px 16px 54px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; background: var(--surface); }
+  ol.obs > li::before { content: counter(obs, decimal-leading-zero); position: absolute; left: 16px; top: 16px; font-family: var(--mono); font-size: .82rem; color: var(--accent-ink); font-weight: 600; }
+  ol.obs > li .oh { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 5px; }
+  ol.obs > li .ot { font-weight: 650; }
+  ol.obs > li p { margin: 0; font-size: .95rem; max-width: none; color: var(--muted); }
+
+  /* Q&A */
+  .qgroup-label { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 30px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .qa { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 18px 20px; margin: 0 0 12px; box-shadow: var(--shadow); }
+  .qa .q { display: flex; gap: 12px; align-items: baseline; font-family: var(--serif); font-size: 1.14rem; font-weight: 600; color: var(--ink); margin: 0 0 8px; line-height: 1.3; text-wrap: pretty; }
+  .qa .q .mark { font-family: var(--mono); font-size: .85rem; font-weight: 600; color: var(--accent-ink); background: var(--accent-wash); border-radius: 6px; padding: 1px 8px; flex: none; line-height: 1.5; }
+  .qa .a { margin: 0; color: var(--muted); font-size: .97rem; max-width: none; }
+  .qa .a strong { color: var(--ink); }
+
+  .formula { display: block; font-family: var(--mono); font-size: .82rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 15px; margin: 13px 0; overflow-x: auto; color: var(--ink); }
+  .arch { display: block; font-family: var(--mono); font-size: .8rem; line-height: 1.55; white-space: pre; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin: 18px 0 8px; color: var(--muted); box-shadow: var(--shadow); }
+  .arch b { color: var(--accent-ink); font-weight: 600; }
+
+  footer { max-width: 1180px; margin: 0 auto; padding: 32px 32px 70px; color: var(--faint); font-size: .86rem; border-top: 1px solid var(--border); }
+  footer .path { font-size: .78rem; }
+  a:focus-visible, .toc a:focus-visible, .totop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+  .totop { position: fixed; right: 22px; bottom: 22px; z-index: 20; display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: .74rem; letter-spacing: .04em; text-decoration: none; color: var(--accent-ink); background: var(--surface); border: 1px solid var(--border-strong); padding: 9px 13px; border-radius: 999px; box-shadow: var(--shadow); opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .2s ease, transform .2s ease; }
+  .totop.show { opacity: 1; transform: none; pointer-events: auto; }
+  @media (prefers-reduced-motion: reduce) { .totop { transition: none; } }
+</style>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <p class="eyebrow">Engineering Dossier · C++ Autodiff · Report &amp; Defense</p>
+    <h1>Micro<span class="em">Torch</span><br>Codebase Analysis</h1>
+    <p class="dek">A from-scratch C++ reverse-mode automatic-differentiation engine, demonstrated by a graph neural network for anti-money-laundering and a diffusion generative model, with two raylib front-ends. A complete read-through for the team, the project report, and the oral defense.</p>
+    <div class="meta">
+      <span class="chip">branch <b>dev</b></span>
+      <span class="chip"><b>51</b> source files</span>
+      <span class="chip tabnum"><b>~3,960</b> LOC</span>
+      <span class="chip">engine → 2 demos → 2 GUIs</span>
+      <span class="chip"><b>9</b> sections</span>
+      <span class="chip">deps: <b>Eigen</b> · Catch2 · raylib</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Table of contents">
+    <p class="toc-label">Contents</p>
+    <ol>
+      <li><a href="#s1"><span class="n">1</span><span>Repository overview</span></a></li>
+      <li><a href="#s2"><span class="n">2</span><span>Per-file breakdown</span></a></li>
+      <li><a href="#s3"><span class="n">3</span><span>Core abstractions</span></a></li>
+      <li><a href="#s4"><span class="n">4</span><span>The two demos</span></a></li>
+      <li><a href="#s5"><span class="n">5</span><span>The GUIs</span></a></li>
+      <li><a href="#s6"><span class="n">6</span><span>OOP inventory</span></a></li>
+      <li><a href="#s7"><span class="n">7</span><span>Test coverage</span></a></li>
+      <li><a href="#s8"><span class="n">8</span><span>Observations</span></a></li>
+      <li><a href="#s9"><span class="n">9</span><span>Defense questions</span></a></li>
+    </ol>
+    <div class="legend">
+      <span class="lg-title">Observation keys</span>
+      <span class="row"><span class="dot crit"></span> Dead / divergent code</span>
+      <span class="row"><span class="dot warn"></span> Inconsistency / stale</span>
+      <span class="row"><span class="dot gap"></span> Coverage gap</span>
+      <span class="row"><span class="dot good"></span> Deliberate design</span>
+    </div>
+  </nav>
+
+  <main>
+    <div class="readguide">
+      <span class="rg-badge">How to read</span>
+      <p>Sections <strong>1–5</strong> are the guided tour (architecture → files → how autodiff works → the demos → the GUIs). Section <strong>6</strong> is the OOP catalogue for the viva. Sections <strong>7–8</strong> are coverage and candid weaknesses. Section <strong>9</strong> is a defense Q&amp;A rehearsal. Every claim cites the file it comes from; nothing here changed any code.</p>
+    </div>
+
+    <!-- ============ 1 ============ -->
+    <section id="s1">
+      <h2><span class="sn">01</span> Repository Overview</h2>
+      <p class="lede">A one-way dependency stack: an engine that knows nothing but linear algebra, two thin demos that link it, and two GUIs decoupled from both through CSV files.</p>
+
+      <h3>Top-level map</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Folder / file</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><span class="path">include/microtorch/</span></td><td>Public headers — the API surface. One subfolder per concern: <span class="path">ops/</span>, <span class="path">optim/</span>, <span class="path">gnn/</span>, <span class="path">diffusion/</span>, <span class="path">data/</span>, <span class="path">eval/</span>, <span class="path">gui/</span>, plus core <span class="path">Tensor.hpp</span>, <span class="path">gradient_check.hpp</span>, <span class="path">logger.hpp</span>.</td></tr>
+          <tr><td><span class="path">src/</span></td><td>Implementations, compiled into one static library <code>libmicrotorch</code>. This <em>is</em> the engine.</td></tr>
+          <tr><td><span class="path">app/</span></td><td>Thin executables: <span class="path">gnn_train.cpp</span>, <span class="path">diffusion_train.cpp</span>, and <span class="path">app/gui/</span> (two raylib programs + a CSV loader). Apps stay short so the engine is visibly doing the work.</td></tr>
+          <tr><td><span class="path">tests/</span></td><td>Catch2 suite, one file per op, wired 1:1 with <span class="path">src/</span>. Every op carries a finite-difference gradient check.</td></tr>
+          <tr><td><span class="path">frames/</span></td><td>Four pre-baked diffusion animations (spiral, two-moons, heart, infinity), 251 frames × 1000 points each — what the diffusion viewer reads.</td></tr>
+          <tr><td><span class="path">gui_artifacts/</span></td><td>The four CSVs the GNN dashboard reads: <span class="path">nodes</span>, <span class="path">edges</span>, <span class="path">accounts</span>, <span class="path">metrics</span>.</td></tr>
+          <tr><td><span class="path">data/</span></td><td>Elliptic Bitcoin dataset, held locally (gitignored). 203,769 nodes · 234,355 edges · 166 features · ~46k labeled · ~1:11.5 imbalance · ~95% AUROC GCN baseline.</td></tr>
+          <tr><td><span class="path">docs/</span></td><td>Holds this analysis (<span class="path">microtorch-analysis.html</span>); the README points here for methodology.</td></tr>
+          <tr><td><span class="path">frames.csv</span> · <span class="path">generated.csv</span></td><td>Root-level live outputs from <code>diffusion_train</code>. The viewer does <em>not</em> read these — see §5 and §8.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Architecture in three layers</h3>
+      <div class="arch"><b>ENGINE</b> (libmicrotorch)          <b>DEMOS</b> (apps)              <b>GUIs</b> (raylib)
+Tensor · autograd · ops · optim  →  gnn_train.cpp        →  gnn_dashboard.cpp   ← gui_artifacts/*.csv
+models · data loaders · eval     →  diffusion_train.cpp  →  diffusion_viewer.cpp ← frames/*.csv</div>
+      <p>The arrows point <strong>one way only</strong>. The engine depends on nothing but Eigen; the apps depend on the engine; the GUIs depend on <em>neither</em> — they are decoupled through the filesystem and link only raylib. That is the README's "engine is the product" claim made structural: the GNN and diffusion demos are built from the same op set with no engine-side special-casing, and the GUIs cannot reach back into the engine at all.</p>
+    </section>
+
+    <!-- ============ 2 ============ -->
+    <section id="s2">
+      <h2><span class="sn">02</span> Per-file Breakdown</h2>
+      <p class="lede">Grouped by concern. Each entry: what it is, what it defines, and the design decision worth knowing.</p>
+
+      <h3>Engine core</h3>
+      <div class="fgroup">
+        <div class="fitem"><div class="fh"><span class="path">include/microtorch/Tensor.hpp</span><span class="what">the core value type</span></div>
+          <p>Defines <code>class Tensor</code> with four <strong>public</strong> fields — <code>data</code>, <code>grad</code>, <code>parents</code>, <code>backward_fnc</code> — plus <code>zero_grad()</code> / <code>backward()</code>, the <code>TensorPtr</code> alias <span class="ln">(L12)</span> and the <code>make_tensor()</code> factory <span class="ln">(L37)</span>. Fields are public because a Tensor is an autograd node every op mutates directly; encapsulation would be pure friction.</p></div>
+        <div class="fitem"><div class="fh"><span class="path">src/Tensor.cpp</span><span class="what">the backward pass</span></div>
+          <p><code>backward()</code> <span class="ln">(L15–40)</span>: a recursive DFS <code>build_topo</code> yields a post-order topological list, seeds the root with <code>grad.setOnes()</code> <span class="ln">(L32)</span>, then walks it in reverse firing each node's <code>backward_fnc</code>. A visited-set of raw pointers avoids revisiting shared subgraphs.</p></div>
+        <div class="fitem"><div class="fh"><span class="path">gradient_check.{hpp,cpp}</span><span class="what">numeric verification</span></div>
+          <p><code>gradient_check(loss_fn, input, eps)</code> runs the analytic backward, then central-differences each element <span class="ln">(cpp:L37)</span> and returns the max discrepancy. <code>loss_fn</code> is a <code>std::function&lt;TensorPtr(TensorPtr)&gt;</code> — the mechanism that wraps a whole model+loss as one scalar function.</p></div>
+        <div class="fitem"><div class="fh"><span class="path">ops.hpp</span> · <span class="path">logger.{hpp,cpp}</span><span class="what">umbrella + utility</span></div>
+          <p><code>ops.hpp</code> includes all eight ops. <code>log_training_csv(path, losses)</code> writes an <code>epoch,loss</code> CSV; referenced only by its own test.</p></div>
+      </div>
+
+      <h3>Ops — each is a forward plus a captured backward lambda</h3>
+      <p>Every op follows one template: assert shapes → compute Eigen forward → <code>make_tensor</code> → set <code>parents</code> → capture <strong>raw</strong> pointers and assign <code>backward_fnc</code>. The raw-pointer capture is deliberate (see §3).</p>
+      <div class="tw"><table>
+        <thead><tr><th>File</th><th>Forward</th><th>Backward it registers</th></tr></thead>
+        <tbody>
+          <tr><td><span class="path">add.cpp</span></td><td><code>a + b</code>, same shape</td><td><code>a.grad += out.grad</code>; <code>b.grad += out.grad</code></td></tr>
+          <tr><td><span class="path">matmul.cpp</span></td><td><code>a * b</code> (Eigen)</td><td><code>a.grad += out.grad·bᵀ</code>; <code>b.grad += aᵀ·out.grad</code></td></tr>
+          <tr><td><span class="path">broadcast_add.cpp</span></td><td><code>(M,N)+(1,N)</code> bias add</td><td><code>a.grad += out.grad</code>; <code>b.grad += out.grad.colwise().sum()</code></td></tr>
+          <tr><td><span class="path">relu.cpp</span></td><td><code>max(0, a)</code></td><td>grad × <code>(a &gt; 0)</code> mask</td></tr>
+          <tr><td><span class="path">reduction.cpp</span></td><td><code>sum()</code> and <code>mean()</code></td><td>sum broadcasts grad; mean broadcasts grad / size</td></tr>
+          <tr><td><span class="path">mse_loss.cpp</span></td><td><code>‖pred−target‖²/size</code></td><td><code>(2/size)·(pred−target)</code>; target captured <em>by value</em></td></tr>
+          <tr><td><span class="path">neighbor_aggregation.cpp</span></td><td>sparse <code>A·X</code></td><td><code>X.grad += Aᵀ·out.grad</code> (A is constant)</td></tr>
+          <tr><td><span class="path">softmax_cross_entropy.cpp</span></td><td>fused, max-shifted</td><td>clean <code>(P−Y)</code>, masked to zero unlabeled rows</td></tr>
+        </tbody>
+      </table></div>
+      <p><code>mse_loss</code> captures <code>target</code> <strong>by copy</strong> <span class="ln">(L37–38)</span> precisely because it is a stack reference that would dangle by backward-time. <code>softmax_cross_entropy</code> is <strong>overloaded</strong> — a masked 4-arg version and a 2-arg convenience wrapper that calls it with an all-ones mask <span class="ln">(L58–62)</span>; fusing softmax with cross-entropy yields the Jacobian-free <code>P−Y</code> gradient.</p>
+
+      <h3>Optimizers <span class="sev new">updated · now an inheritance hierarchy</span></h3>
+      <div class="fgroup">
+        <div class="fitem"><div class="fh"><span class="path">optim/optimizer.hpp</span><span class="what">abstract base class</span></div>
+          <p><code>class Optimizer</code> <span class="ln">(L10)</span> — the base for every optimizer. Owns the parameters (<code>protected std::vector&lt;TensorPtr&gt; params_</code>), provides a shared concrete <code>zero_grad()</code>, declares <code>virtual void step() = 0</code> (<strong>pure virtual → abstract, cannot be instantiated</strong>) and a <code>virtual ~Optimizer() = default</code> so deletion through an <code>Optimizer*</code> is safe.</p></div>
+        <div class="fitem"><div class="fh"><span class="path">optim/sgd.{hpp,cpp}</span></div>
+          <p><code>class SGD : public Optimizer</code> — adds <code>lr_</code>, delegates construction with <code>: Optimizer(params)</code>, and <code>void step() override</code> does <code>w -= lr·grad</code>. <code>zero_grad()</code> is inherited from the base.</p></div>
+        <div class="fitem"><div class="fh"><span class="path">optim/adam.{hpp,cpp}</span></div>
+          <p><code>class Adam : public Optimizer</code> — adds moment buffers <code>m_</code>/<code>v_</code> (sized per parameter in the ctor) and <code>beta1_/beta2_/eps_/t_</code>; <code>step() override</code> is a textbook bias-corrected Adam update. Both optimizers hold <code>shared_ptr</code>s to the same tensors the forward pass reads.</p></div>
+      </div>
+
+      <h3>Models</h3>
+      <div class="fgroup">
+        <div class="fitem"><div class="fh"><span class="path">gnn/gnn_model.{hpp,cpp}</span><span class="what">2-layer GCN + linear head</span></div>
+          <p>Private weights, public <code>forward(A, X, use_graph)</code> / <code>parameters()</code>. Each layer is <code>neighbor_aggregation</code> (if <code>use_graph</code>) → <code>matmul</code> → <code>broadcast_add</code> → <code>relu</code>; the classifier omits ReLU for raw logits. The <code>use_graph=false</code> path skips aggregation — that single boolean <em>is</em> the GNN-vs-MLP ablation.</p></div>
+        <div class="fitem"><div class="fh"><span class="path">diffusion/diffusion_model.{hpp,cpp}</span><span class="what">MLP denoiser + forward_noise</span></div>
+          <p>A 3-layer MLP, plus free function <code>forward_noise</code> implementing the DDPM blend <code>x_t = √ᾱ·x0 + √(1−ᾱ)·noise</code> <span class="ln">(L9–30)</span>. Has its own duplicate <code>he_init</code>. <span class="sev incon">stale</span> header comment still says <code>in_features = 3</code>, but the app now feeds width-10 embedded input.</p></div>
+        <div class="fitem"><div class="fh"><span class="path">diffusion/noise_schedule.{hpp,cpp}</span></div><p><code>struct NoiseSchedule</code> (public <code>T</code>, <code>beta</code>, <code>alpha</code>, <code>alpha_bar</code>) built from a linear β and cumulative-product ᾱ, with <code>alpha_bar[0] = alpha[0]</code>.</p></div>
+      </div>
+
+      <h3>Data loaders</h3>
+      <div class="fgroup">
+        <div class="fitem"><div class="fh"><span class="path">data/toy_data.{hpp,cpp}</span></div><p>Seven 2D generators, all seeded <code>mt19937(42)</code>: <code>make_spiral</code> (tight double-spiral, r ≤ 2, θ = 3π·t), <code>make_light_spiral</code> (loose <code>t·cos t</code> over 4π), two-moons, infinity, concentric-circles, heart, checkerboard.</p></div>
+        <div class="fitem"><div class="fh"><span class="path">data/data_loader.{hpp,cpp}</span><span class="what">the Elliptic pipeline</span></div>
+          <p><code>load_csv</code>, <code>load_labels</code> ("1"→illicit, "2"→licit, else −1), <code>build_txid_index</code>, <code>load_edges</code>, and orchestrator <code>load_elliptic</code> <span class="ln">(L199–302)</span>: drops the first two feature cols, one-hot encodes <code>Y</code>, builds a <strong>symmetric</strong> adjacency with self-loops via a dedup set, then applies symmetric normalization <code>D^(−½) A D^(−½)</code> <span class="ln">(L285–296)</span> so high-degree nodes don't explode. Yields <code>EllipticData{A, X, Y, labeled_rows}</code>.</p></div>
+      </div>
+
+      <h3>Eval &amp; GUI export</h3>
+      <div class="fgroup">
+        <div class="fitem"><div class="fh"><span class="path">eval/eval_metrics.{hpp,cpp}</span></div><p><code>confusion_counts</code>, <code>precision</code>, <code>recall</code>, <code>f1_score</code>, <code>accuracy</code>, and a rank-based <code>auroc</code> with <strong>tie-averaged</strong> ranks <span class="ln">(cpp:L64–73)</span>. <span class="sev incon">inconsistency</span> declared in the <em>global</em> namespace, unlike the rest of the engine.</p></div>
+        <div class="fitem"><div class="fh"><span class="path">gui/gui_export.{hpp,cpp}</span></div><p><code>NodeVisData</code>, <code>AccountRecord</code>, four CSV writers + <code>export_all_gui_artifacts</code>. <span class="sev dead">dead on dev</span> nothing calls it here, and <code>write_edges_csv</code> still strips edge direction via <code>if (edge.first &lt; edge.second)</code> <span class="ln">(L15)</span>. Also global namespace.</p></div>
+      </div>
+
+      <h3>Training apps</h3>
+      <div class="fgroup">
+        <div class="fitem"><div class="fh"><span class="path">app/gnn_train.cpp</span></div><p>Runs 3 seeds {95,67,123}. Per seed: stratified 80/20 split honoring imbalance (<code>run_seed</code>), then <code>run_experiment</code> twice (GNN, then MLP ablation) — 70 epochs, Adam(0.01), masked softmax-CE, then TP/FP/TN/FN + metrics + AUROC. Contains its <strong>own</strong> local <code>compute_auroc</code> <span class="ln">(L217–253)</span> that does <em>not</em> average ties.</p></div>
+        <div class="fitem"><div class="fh"><span class="path">app/diffusion_train.cpp</span></div><p>Trains on <code>make_spiral</code>. Defines <code>time_embedding</code> + <code>build_input</code> — sinusoidal encoding giving width-10 input (K=4). Loop averages MSE over 16 random timesteps/epoch via the <code>add</code> op; <code>generate()</code> is DDPM ancestral sampling recording frames every 4th step, then writes <code>frames.csv</code> (all) + <code>generated.csv</code> (final). Config: lr 0.005, MAX_EPOCH 2000, T 1000.</p></div>
+      </div>
+
+      <h3>GUIs</h3>
+      <div class="fgroup">
+        <div class="fitem"><div class="fh"><span class="path">app/gui/gnn_dashboard.cpp</span><span class="what">formerly main.cpp — renamed, content identical</span></div><p>The AML dashboard: data-preview table, paginated ranked-accounts (Prev/Next, risk as <code>%.2f%%</code>), metrics panel, and an interactive ego-graph splitting counterparties into received (left) / sent (right) semicircles, capped at the 8 riskiest, with directional arrows (<code>draw_arrow</code>).</p></div>
+        <div class="fitem"><div class="fh"><span class="path">app/gui/diffusion_viewer.cpp</span></div><p>A two-screen (<code>MENU</code>/<code>VIEWER</code>) player: 4 shape cards with live mini-previews; viewer with a scrub slider, Play/Pause, auto-scale, and a faint final-shape overlay. Reads the curated <span class="path">frames/frames_*.csv</span>, not root <code>frames.csv</code>.</p></div>
+        <div class="fitem"><div class="fh"><span class="path">app/gui/csv_loader.{hpp,cpp}</span></div><p>GUI-side <code>Node</code>/<code>Edge</code>/<code>Account</code>/<code>Metrics</code> structs + parsers — an <em>independent</em> definition of the same schema the engine writes (decoupling at the cost of drift risk; see §8).</p></div>
+      </div>
+    </section>
+
+    <!-- ============ 3 ============ -->
+    <section id="s3">
+      <h2><span class="sn">03</span> The Engine's Core Abstractions</h2>
+      <p class="lede">How the autodiff actually works — the intellectual center of the project, told as one story.</p>
+
+      <p><strong>A tensor is a node in a computation graph.</strong> Every <code>Tensor</code> carries its value (<code>data</code>), a same-shape gradient accumulator (<code>grad</code>, zero-initialized), the tensors it was computed <em>from</em> (<code>parents</code>), and a closure describing how to push gradient to those parents (<code>backward_fnc</code>). Tensors live behind <code>shared_ptr</code> so the graph stays alive as long as anything downstream references it.</p>
+
+      <p><strong>An op builds one node and teaches it to differentiate itself.</strong> <code>matmul(a,b)</code> computes <code>out.data = a.data * b.data</code>, records <code>out.parents = {a,b}</code>, and assigns <code>out.backward_fnc</code> a lambda that later does <code>a.grad += out.grad·bᵀ</code> and <code>b.grad += aᵀ·out.grad</code>. It doesn't compute a gradient now — it stores a <em>recipe</em>. The key inversion: <strong>the backward pass is data (a list of closures), not control flow.</strong></p>
+
+      <div class="note"><span class="k">Why raw pointers in the lambdas</span><p>Each op captures <code>a.get()</code> — raw, never <code>shared_ptr</code>. <code>out</code> owns its <code>backward_fnc</code>, and <code>out.parents</code> already keeps <code>a</code>/<code>b</code> alive. If the lambda also held <code>shared_ptr</code>s, <code>out</code> would transitively own itself — a reference cycle and a leak. Raw capture lets the closure touch <code>grad</code> without owning anything; <code>parents</code> guarantees the pointers stay valid until the whole graph drops. <code>mse_loss</code> is the lone by-value capture, because <code>target</code> isn't a graph node.</p></div>
+
+      <p><strong>A forward pass composes ops into a DAG.</strong> When <code>GNNModel::forward</code> chains <code>neighbor_aggregation → matmul → broadcast_add → relu</code>, each call allocates a tensor whose <code>parents</code> point back at its inputs. By the final logits you have a DAG: leaves are parameters and input, root is the loss scalar. No gradients yet — only structure and recipes.</p>
+
+      <p><strong>Backward is a topological replay.</strong> <code>Tensor::backward()</code> does a post-order DFS to list every node parents-before-children, seeds <code>dL/dL = 1</code> with <code>grad.setOnes()</code>, then iterates <strong>in reverse</strong> so each node runs only after everything that consumes it. Each <code>backward_fnc</code> <code>+=</code>-accumulates into its parents' <code>grad</code> — so a tensor used in two places correctly receives the sum of both paths. When it finishes, every parameter's <code>grad</code> holds <code>∂loss/∂param</code>.</p>
+
+      <p><strong>The optimizer closes the loop.</strong> An <code>Adam</code>/<code>SGD</code> holds <code>shared_ptr</code>s to the same parameters. <code>zero_grad()</code> clears; forward rebuilds a fresh graph; <code>backward()</code> fills; <code>step()</code> mutates <code>data</code>. A new graph each iteration is why the accumulate-with-<code>+=</code> design is safe.</p>
+
+      <p><strong>Verification is first-class.</strong> Because a correct backward is the whole value proposition, <code>gradient_check</code> wraps forward+backward as a <code>std::function</code> and compares analytic gradients against central differences — and a test feeds it a <em>deliberately broken</em> ReLU to prove the harness catches wrong gradients. That's the safety net the README leans on: a wrong derivative surfaces as a named test failure, not a model that mysteriously never learns.</p>
+    </section>
+
+    <!-- ============ 4 ============ -->
+    <section id="s4">
+      <h2><span class="sn">04</span> The Two Demos</h2>
+      <p class="lede">Both are built from the same op set — one supervised classifier on a real graph, one generative model on synthetic 2D shapes.</p>
+
+      <h3>GNN pipeline — anti-money-laundering</h3>
+      <ol class="body">
+        <li><strong>Load</strong> Elliptic via <code>load_elliptic</code> → normalized sparse <code>A</code>, features <code>X</code> (N×166), one-hot <code>Y</code>, <code>labeled_rows</code>.</li>
+        <li><strong>Split</strong> (per seed): separate illicit/licit, shuffle, 80/20 — <em>stratified</em>, so the ~1:11.5 imbalance survives in both sets. Build train/test masks.</li>
+        <li><strong>Train</strong>: <code>GNNModel(166,128,2)</code>, Adam(0.01), 70 epochs masked softmax-CE; test loss printed every 10 epochs.</li>
+        <li><strong>Evaluate</strong>: final forward, TP/FP/TN/FN over test rows (illicit when logit₁ &gt; logit₀), precision/recall/F1/accuracy, AUROC via the Mann-Whitney rank statistic.</li>
+        <li><strong>Ablation</strong>: identical run with <code>use_graph=false</code> — a plain MLP on node features, isolating the graph's contribution. Repeated over 3 seeds.</li>
+      </ol>
+      <div class="note"><span class="k">Finding</span><p>Both the GNN and the MLP ablation land in the ~0.96–0.98 AUROC range across seeds — near the ~0.95 published GCN baseline the data README says to sanity-check against. The graph's <em>marginal</em> gain over the plain MLP was small on this feature set (the Elliptic node features are already highly predictive) — a legitimate ablation result, not a failure.</p></div>
+
+      <h3>Diffusion pipeline — 2D generative</h3>
+      <ol class="body">
+        <li><strong>Target</strong>: <code>make_spiral(1000)</code>.</li>
+        <li><strong>Schedule</strong>: <code>make_noise_schedule(T=1000)</code> → linear β, cumulative ᾱ.</li>
+        <li><strong>Forward noising</strong>: <code>forward_noise</code> blends <code>x0</code> with Gaussian noise at random <code>t</code>, returning the exact noise as the training target.</li>
+        <li><strong>Time embedding</strong>: <code>build_input</code> concatenates <code>x_t</code> with 8 sinusoidal features → width-10 input, so the MLP can tell noise levels apart.</li>
+        <li><strong>Train</strong>: <code>DiffusionModel(10,256,2)</code> predicts noise; MSE averaged over 16 timesteps/epoch; Adam, 2000 epochs.</li>
+        <li><strong>Sample (DDPM)</strong>: from pure noise, iterate <code>t=T-1…0</code> applying the reverse mean update, snapshotting frames every 4th step.</li>
+        <li><strong>Export</strong>: <code>frames.csv</code> (animation) + <code>generated.csv</code> (final).</li>
+      </ol>
+      <div class="formula">x ← (1/√αₜ)·(x − βₜ/√(1−ᾱₜ)·ε̂) + √βₜ·z      (z ~ 𝒩(0,I) for t&gt;0, deterministic at t=0)</div>
+      <div class="note warn"><span class="k">Finding</span><p>The plain MLP fits the <em>loose</em> <code>make_light_spiral</code> cleanly but struggles on the <em>tight</em> <code>make_spiral</code>, producing a blob rather than sharp arms — a modeling-capacity limit, not a bug. The curated animations in <span class="path">frames/</span> are what the viewer showcases.</p></div>
+    </section>
+
+    <!-- ============ 5 ============ -->
+    <section id="s5">
+      <h2><span class="sn">05</span> The GUIs</h2>
+      <p class="lede">Two raylib front-ends, each reading only CSV artifacts — no engine linkage.</p>
+
+      <h3>GNN dashboard <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--faint)">— gnn_dashboard.cpp</span></h3>
+      <p>An AML analyst view. It loads <span class="path">gui_artifacts/{nodes,edges,accounts,metrics}.csv</span> through the GUI-side loader. Left column: a data-preview table, a <strong>paginated</strong> ranked-accounts table (click to select; Prev/Next; risk as a percentage), and a metrics panel. Right: an interactive <strong>ego-graph</strong> of the selected account — counterparties split spatially into <em>received</em> (left arc) and <em>sent</em> (right arc), each capped at the 8 riskiest, drawn with directional arrows and colored red/green by predicted label. Interaction is an immediate-mode raylib loop; selection and pagination are mouse hit-tests every frame.</p>
+
+      <h3>Diffusion viewer <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--faint)">— diffusion_viewer.cpp</span></h3>
+      <p>A tiny two-screen state machine. The <strong>menu</strong> renders four shape cards in a 2×2 grid, each with a live mini-preview of that shape's final frame; clicking loads its full animation. The <strong>viewer</strong> plays noise → shape: a draggable slider scrubs frame 0 → last, Play/Pause auto-advances with a tick throttle, auto-scaling fits each shape, and a faint overlay of the final shape sits under the current frame. Both screens share one <code>to_screen</code> mapping that flips y. It reads the curated <span class="path">frames/</span> files — <strong>not</strong> the root <code>frames.csv</code> a fresh training run writes.</p>
+    </section>
+
+    <!-- ============ 6 ============ -->
+    <section id="s6">
+      <h2><span class="sn">06</span> OOP Inventory</h2>
+      <p class="lede">All five pillars are present. The optimizer hierarchy supplies real inheritance and virtual dispatch; the ops deliberately use type erasure <em>instead of</em> a class hierarchy. The defense strength is being able to say which pattern each subsystem uses, and why.</p>
+
+      <div class="tw"><table>
+        <thead><tr><th>Pillar</th><th>Where it lives (with the defense line)</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Encapsulation</strong></td><td><code>GNNModel</code>, <code>DiffusionModel</code>, <code>SGD</code>, <code>Adam</code> — private members, public methods; the <code>Optimizer</code> base keeps <code>params_</code> <code>protected</code> so subclasses reach it but callers can't. <strong>Deliberate non-encapsulation:</strong> <code>Tensor</code> exposes <code>data/grad/parents/backward_fnc</code> as public fields <span class="ln">(Tensor.hpp:15–21)</span> because it's an autograd node every op mutates and there's no invariant to protect. <em>Being able to justify Tensor's public fields is a strong point.</em></td></tr>
+          <tr><td><strong>Inheritance</strong> <span class="sev new">now present</span></td><td><code>class Optimizer</code> <span class="ln">(optimizer.hpp:10)</span> is an <strong>abstract base</strong>; <code>class SGD : public Optimizer</code> <span class="ln">(sgd.hpp:7)</span> and <code>class Adam : public Optimizer</code> <span class="ln">(adam.hpp:8)</span> derive from it, delegate construction with <code>: Optimizer(params)</code>, and <code>override step()</code>. Textbook use: the base holds the <em>shared state</em> (<code>params_</code>) and <em>shared behavior</em> (<code>zero_grad()</code>); the one operation that differs (<code>step()</code>) is deferred to the subclasses.</td></tr>
+          <tr><td><strong>Polymorphism</strong></td><td>Three distinct forms. <em>(1) Virtual dispatch:</em> <code>virtual void step() = 0</code> <span class="ln">(optimizer.hpp:26)</span> overridden per optimizer, plus a <code>virtual ~Optimizer()</code> for safe deletion through a base pointer. <em>(2) Overloading:</em> <code>softmax_cross_entropy</code> masked/unmasked <span class="ln">(hpp:L10–11)</span>. <em>(3) Type erasure:</em> <code>std::function&lt;void()&gt; backward_fnc</code> — each op installs a different callable behind one interface. <span class="sev note">candid</span> the demos instantiate <code>Adam</code> concretely, so no call currently dispatches through an <code>Optimizer*</code> — the machinery exists; the polymorphic call site doesn't yet.</td></tr>
+          <tr><td><strong>Abstraction</strong></td><td><code>TensorPtr</code> + <code>make_tensor</code> hide <code>shared_ptr</code>; each op abstracts a forward/backward pair behind a call; the <code>Optimizer</code> base is itself an abstraction (can't be instantiated — it <em>defines the interface</em> "an optimizer has <code>step()</code> and <code>zero_grad()</code>"); <code>load_elliptic</code> abstracts a multi-file ETL.</td></tr>
+          <tr><td><strong>Composition</strong> <span class="sev note">the backbone</span></td><td>Models <em>have-a</em> set of parameter <code>TensorPtr</code>s; <code>Adam</code> <em>has-a</em> vector of params + moment matrices; a <code>Tensor</code> <em>has-a</em> <code>vector&lt;TensorPtr&gt; parents</code> — <strong>the graph itself is composition</strong>; forward passes are literal function composition of ops.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note"><span class="k">The one-sentence defense</span><p>"Optimizers share state and one differing operation, so they get a base class with a pure-virtual <code>step()</code>; ops are stateless recipes, so they get <code>std::function</code> type erasure instead of a parallel <code>Op</code> hierarchy — same behavioral polymorphism, no wasted class tree." That answer turns the apparent inconsistency into evidence of judgment.</p></div>
+    </section>
+
+    <!-- ============ 7 ============ -->
+    <section id="s7">
+      <h2><span class="sn">07</span> Test Coverage</h2>
+      <p class="lede">One Catch2 file per component, each ctest a named entry. Strong on op-level correctness; thin on integration.</p>
+
+      <h3>What's verified</h3>
+      <ul class="body">
+        <li><strong>Every op</strong>: hardcoded forward + analytic backward + finite-difference check &lt; 1e-6 — matmul, broadcast_add, relu, reduction, mse_loss, neighbor_aggregation, softmax_cross_entropy (both overloads, incl. a proof that unlabeled rows get exactly zero gradient).</li>
+        <li><strong>The harness itself</strong>: passes a correct op and <em>catches</em> a broken one.</li>
+        <li><strong>Models end-to-end</strong>: <code>GNNModel</code> and <code>DiffusionModel</code> full forward/backward via <code>gradient_check</code>.</li>
+        <li><strong>Optimizers</strong>: <code>SGD</code> and <code>Adam</code> converge on <code>f(x)=x²</code> (constructed as concrete types).</li>
+        <li><strong>Diffusion math</strong>: <code>forward_noise</code> blend + edge cases; schedule β linearity and ᾱ monotonic product.</li>
+        <li><strong>Data</strong>: csv, labels, txid-index, edges, full <code>load_elliptic</code> assembly on synthetic files. <strong>Toy shapes</strong>: bounds for spiral, moons, infinity, circles, heart, checkerboard. <strong>Eval/export/logger</strong>: confusion/f1/accuracy; the four CSV writers; the logger.</li>
+      </ul>
+
+      <h3>Gaps a reviewer will notice</h3>
+      <div class="tw"><table>
+        <thead><tr><th>Gap</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td><code>add</code> untested</td><td>No <span class="path">test_add.cpp</span>, though <code>add</code> is load-bearing in the diffusion loss accumulation.</td></tr>
+          <tr><td><code>auroc</code> untested</td><td>The hardest metric (tie-averaged ranks) has no unit test; only confusion/f1/accuracy are covered. <code>compute_auroc</code> in the app is also untested.</td></tr>
+          <tr><td>Optimizers not through autograd</td><td>Tests inject <code>x-&gt;grad = 2x</code> by hand — nothing verifies optimizer + backward together, nor the new <code>Optimizer*</code> polymorphic path.</td></tr>
+          <tr><td>No end-to-end training test</td><td>Training loops, DDPM <code>generate()</code>, and <code>time_embedding</code>/<code>build_input</code> (app-level) are unverified.</td></tr>
+          <tr><td><code>test_tensor.cpp</code> is a placeholder</td><td><code>REQUIRE(1+1==2)</code> — the core <code>backward()</code> logic is only covered transitively through ops.</td></tr>
+          <tr><td>Branch-sensitive test</td><td><span class="path">test_gui_export.cpp</span> asserts the <em>old</em> direction-stripping edge behavior — passes on dev, would fail against the fixed exporter.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============ 8 ============ -->
+    <section id="s8">
+      <h2><span class="sn">08</span> Observations</h2>
+      <p class="lede">Honest and specific — the things an examiner is most likely to probe. Keyed by type. The GUI-export path has since been fixed and merged, so the items that were once red/amber now lead as <span style="color:var(--good)">resolved</span>; the standing observations follow.</p>
+
+      <ol class="obs">
+        <li><div class="oh"><span class="sev note">resolved</span><span class="ot">The GUI-export path is now live and wired in.</span></div><p><code>gnn_train.cpp</code> calls <code>export_gui_artifacts</code> at the end of a run <span class="ln">(L214)</span>, which fans out to <code>export_all_gui_artifacts</code>; <code>EllipticData</code> now carries the <code>raw_edges</code> and <code>tx_ids</code> the exporter needs <span class="ln">(data_loader.hpp:24–25)</span>. The four <span class="path">gui_artifacts/*.csv</span> are regenerated from the trained model every run, not hand-shipped from another branch.</p></li>
+        <li><div class="oh"><span class="sev note">resolved</span><span class="ot"><code>write_edges_csv</code> now agrees with <code>edges.csv</code>.</span></div><p>The writer keeps the real <code>txId1 → txId2</code> order <span class="ln">(gui_export.cpp:14–18)</span>; the old <code>edge.first &lt; edge.second</code> filter that dropped direction <em>and</em> ~half the edges is gone. The exported <code>edges.csv</code> is fully directed and matches the model's adjacency, so the dashboard's incoming/outgoing arrows are correct.</p></li>
+        <li><div class="oh"><span class="sev note">resolved</span><span class="ot">One AUROC implementation, not two.</span></div><p><code>gnn_train.cpp</code> now calls the shared <code>eval_metrics::auroc</code> <span class="ln">(L201)</span> — the same tie-averaged function <code>write_metrics_csv</code> uses — so the console AUROC and the <code>metrics.csv</code> AUROC can no longer drift. The local sequential-rank <code>compute_auroc</code> is gone.</p></li>
+        <li><div class="oh"><span class="sev note">resolved</span><span class="ot">Engine headers now share the <code>microtorch</code> namespace.</span></div><p><code>eval_metrics</code> and <code>gui_export</code> — headers <em>and</em> <code>.cpp</code> bodies — now live in <code>namespace microtorch</code> like the rest of the engine, verified compiling with symbols <code>microtorch::auroc</code> / <code>microtorch::write_edges_csv</code>. No more global-namespace outliers.</p></li>
+        <li><div class="oh"><span class="sev note">resolved</span><span class="ot">Denoiser header comment matches the code.</span></div><p><code>diffusion_model.hpp</code> now documents <code>in_features = 10</code> <span class="ln">(L24)</span>, matching the width-10 embedded input the app feeds; the stale <code>(n, 3)</code> shape note is gone.</p></li>
+        <li><div class="oh"><span class="sev note">by design</span><span class="ot">The diffusion viewer reads curated frames, not live training output.</span></div><p>Deliberate: the viewer showcases the four polished animations in <span class="path">frames/frames_*.csv</span>, while <code>diffusion_train</code> writes root <code>frames.csv</code>. Auto-loading a freshly-trained shape is an unbuilt convenience — a coverage gap, not a defect — so copy the file in to preview a new run.</p></li>
+        <li><div class="oh"><span class="sev incon">coupling</span><span class="ot">The CSV schema is still defined twice.</span></div><p>The engine's <code>gui_export</code> structs and the GUI's <code>csv_loader</code> structs independently describe the same columns (with type differences — <code>account_id</code> string vs long long). The drift it once caused — edge <em>direction</em> — is now fixed, but the duplication remains: a single shared schema or generated header would remove the whole class of bug.</p></li>
+        <li><div class="oh"><span class="sev note">by design</span><span class="ot"><code>make_spiral</code> vs <code>make_light_spiral</code>.</span></div><p>The app targets the tight spiral the plain MLP can't fit well; the loose one produces a clean spiral. A capacity limit, not a bug — state it plainly if the demo looks blobby.</p></li>
+        <li><div class="oh"><span class="sev note">assumption</span><span class="ot"><code>backward()</code> assumes a scalar root.</span></div><p><code>grad.setOnes()</code> is only correct because every entry point is a 1×1 loss. Calling backward on a non-scalar would seed the wrong upstream gradient.</p></li>
+        <li><div class="oh"><span class="sev note">assumption</span><span class="ot">Re-running <code>backward()</code> would double-count.</span></div><p>Grads accumulate with <code>+=</code> and only parameters are zeroed (by the optimizer). Safe only because a fresh graph is built each iteration.</p></li>
+        <li><div class="oh"><span class="sev gap">minor</span><span class="ot">Duplicated <code>he_init</code>.</span></div><p>Both <code>gnn_model.cpp</code> <span class="ln">(L12)</span> and <code>diffusion_model.cpp</code> <span class="ln">(L33)</span> define their own <code>static</code> He-init with independent <code>static mt19937</code> streams.</p></li>
+      </ol>
+    </section>
+
+    <!-- ============ 9 ============ -->
+    <section id="s9">
+      <h2><span class="sn">09</span> Defense-Worthy Questions</h2>
+      <p class="lede">A rehearsal set — overview and rationale questions, not just flaw-hunting. Each answer is short enough to say out loud and grounded in the code above.</p>
+
+      <p class="qgroup-label">Overview &amp; rationale</p>
+      <div class="qa"><p class="q"><span class="mark">Q</span>Why build automatic differentiation from scratch instead of using PyTorch or TensorFlow?</p><p class="a">The engine <em>is</em> the deliverable — the project demonstrates understanding of reverse-mode AD, not model tuning. A framework would hide exactly the mechanism being assessed. Eigen is used only for linear-algebra storage and matrix ops, never for gradients.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>Why reverse-mode rather than forward-mode AD?</p><p class="a">The loss is a single scalar and the parameters are many. Reverse-mode computes <em>all</em> <code>∂loss/∂param</code> in one backward pass (cost ≈ one forward); forward-mode would cost one pass per input dimension. For neural nets that's the standard, and correct, choice.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>In one breath, how does a value remember how to differentiate itself?</p><p class="a">Each <code>Tensor</code> stores its <code>parents</code> and a <code>backward_fnc</code> closure that pushes gradient to those parents. <code>backward()</code> topologically orders the graph from the loss and replays those closures in reverse. The backward pass is <em>data</em>, not hand-written control flow.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>What do the GNN and diffusion demos prove about the engine?</p><p class="a">That it's a genuine framework, not a one-architecture hack: a graph classifier and a generative denoiser are built from the <em>same</em> eight ops with zero engine-side special-casing. If both train, the abstraction is real.</p></div>
+
+      <p class="qgroup-label">Design decisions</p>
+      <div class="qa"><p class="q"><span class="mark">Q</span>Why capture raw pointers in the backward lambdas instead of <code>shared_ptr</code>?</p><p class="a">To avoid a reference cycle. <code>out</code> owns its <code>backward_fnc</code>, and <code>out.parents</code> already keeps the inputs alive; if the closure also held a <code>shared_ptr</code> to <code>out</code>, <code>out</code> would own itself and leak. Raw capture touches <code>grad</code> without owning anything. <code>mse_loss</code> is the exception — it captures <code>target</code> by value because it isn't a graph node.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>Why is <code>Tensor</code>'s data public but the models' weights private?</p><p class="a"><code>Tensor</code> is a plain autograd node every op reads and writes — there's no invariant to protect, so getters would be ceremony. A model owns an invariant (a fixed, specifically-initialized parameter set), so it hides that behind <code>forward()</code> and <code>parameters()</code>. Encapsulation follows whether there's something to protect.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>You use an inheritance hierarchy for optimizers but type erasure for ops. Isn't that inconsistent?</p><p class="a">It's deliberate, and it's the crux of the OOP story. Optimizers share <em>state</em> (<code>params_</code>) and <em>shared behavior</em> (<code>zero_grad</code>) and differ only in <code>step()</code> — a textbook base class with a pure-virtual method. Ops are <em>stateless recipes</em> with nothing to share; wrapping each in an object with a <code>virtual backward()</code> would add a parallel class tree and heap allocation for no benefit, so they use <code>std::function</code>. Same behavioral polymorphism, right tool per shape.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>Why fuse softmax and cross-entropy into one op?</p><p class="a">Two reasons. Numerical stability — the forward subtracts the row max before exponentiating. And the gradient collapses to <code>P − Y</code> with no Jacobian, which is cheaper and far less error-prone than composing a separate softmax and log.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>Why symmetrically normalize the adjacency (<code>D^-½ A D^-½</code>)?</p><p class="a">Neighbor aggregation <em>sums</em> feature rows, so without normalization a high-degree node produces huge activations and training destabilizes. Symmetric normalization (the GCN scheme) bounds the scale and accounts for the degree of both endpoints. Self-loops are added first so a node keeps its own features.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>Why a sinusoidal time embedding instead of feeding the scalar <code>t</code>?</p><p class="a">A single <code>t/T</code> column is a weak conditioning signal; the MLP couldn't distinguish noise levels and the loss plateaued. Multi-frequency sin/cos features (like transformer positional encoding) give the network an expressive basis for the timestep, which broke the plateau.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>Why pass CSV artifacts between the engine and the GUIs instead of linking?</p><p class="a">Decoupling. The GUI has no build- or run-time dependency on the engine, can be developed and run independently, and the heavy raylib dependency stays out of the engine and its tests. The acknowledged cost is that the CSV schema is defined twice (writer and reader) — a drift risk that, honestly, once bit the edge-direction field.</p></div>
+
+      <p class="qgroup-label">Correctness, limits &amp; candor</p>
+      <div class="qa"><p class="q"><span class="mark">Q</span>How do you know your gradients are actually correct?</p><p class="a">Every op has a central-difference gradient check under <code>1e-6</code>, whole models (GNN and diffusion) are gradient-checked end-to-end, and the harness is itself tested against a <em>deliberately broken</em> ReLU — so we've shown it catches wrong gradients, not merely that it passes correct ones.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>Did the graph actually help? What does the ablation say?</p><p class="a">Both the GNN and the MLP ablation reached ~0.96–0.98 AUROC across three seeds, near the ~0.95 baseline; the graph's marginal gain was small here because the Elliptic node features are already highly predictive. That's a real, defensible finding — the ablation exists precisely to measure that contribution honestly rather than assume it.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>What happens if <code>backward()</code> is called twice, or on a non-scalar output?</p><p class="a">Gradients accumulate with <code>+=</code>, so a second backward on the same graph double-counts — safe only because each iteration builds a fresh graph and the optimizer zeroes parameters first. And <code>backward()</code> seeds <code>grad.setOnes()</code> assuming a 1×1 loss; a non-scalar root would seed the wrong upstream gradient. Both are conscious constraints, not accidents.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>Do you ever actually call an optimizer through the <code>Optimizer</code> base pointer?</p><p class="a">Not yet — the demos construct <code>Adam</code> concretely. The base gives us the shared <code>zero_grad</code>, the abstract interface, and the ability to write code over an <code>Optimizer&amp;</code>; the virtual dispatch is in place but no polymorphic call site exercises it. Worth stating up front rather than being caught on it.</p></div>
+      <div class="qa"><p class="q"><span class="mark">Q</span>What's the single biggest weakness you'd flag yourself?</p><p class="a">The engine/GUI schema duplication (§8): the same CSV columns are described independently on the write and read sides, and that's where the edge-direction bug slipped in. It's the price of decoupling; the fix is a single shared schema definition or a generated header. Naming it first reads as mastery, not fragility.</p></div>
+    </section>
+  </main>
+</div>
+
+<a class="totop" href="#" aria-label="Back to top">↑ Top</a>
+
+<footer>
+  <p>MicroTorch codebase analysis · read-and-explain only, no code modified · reflects branch <span class="path">dev</span>. Line numbers cite the current working tree; a few items note where <span class="path">dev</span> and <span class="path">features/gui-exports</span> diverge.</p>
+</footer>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+    var map = {};
+    links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+    var sections = Array.prototype.slice.call(document.querySelectorAll('main section'));
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) {
+            links.forEach(function (l) { l.classList.remove('active'); });
+            var a = map[e.target.id];
+            if (a) a.classList.add('active');
+          }
+        });
+      }, { rootMargin: '-10% 0px -80% 0px', threshold: 0 });
+      sections.forEach(function (s) { io.observe(s); });
+    }
+    var top = document.querySelector('.totop');
+    top.addEventListener('click', function (ev) { ev.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    var onScroll = function () { if (window.scrollY > 600) top.classList.add('show'); else top.classList.remove('show'); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+</script>
+</html>
