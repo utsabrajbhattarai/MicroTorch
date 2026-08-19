@@ -4,6 +4,8 @@
 #include <stdexcept>  // for std::invalid_argument, std::runtime_error etc
 #include <fstream>
 
+namespace microtorch {
+
 ConfusionCounts confusion_counts(const std::vector<int>& predicted, const std::vector<int>& actual) {
     ConfusionCounts c{0, 0, 0, 0};
     for (size_t i = 0; i < predicted.size(); ++i) {
@@ -85,3 +87,4 @@ double auroc(const std::vector<double>& scores, const std::vector<int>& actual) 
     return (rank_sum_pos - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg);
 }
 
+} //namespace microtorch

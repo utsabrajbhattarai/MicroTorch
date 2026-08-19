@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 
+namespace microtorch{
 struct ConfusionCounts
 {
     int tp, fp, tn, fn;
@@ -16,3 +17,4 @@ double f1_score(const std::vector<int>& predicted, const std::vector<int>& actua
 double accuracy(const std::vector<int>& predicted, const std::vector<int>& actual);
 double auroc(const std::vector<double>& scores, const std::vector<int>& actual); 
 
+} //using namespace microtorch

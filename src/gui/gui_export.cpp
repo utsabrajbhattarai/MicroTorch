@@ -4,6 +4,9 @@
 #include <stdexcept>
 #include <filesystem>
 
+namespace microtorch
+{
+
 // all of these are just writing to csv files, nothing else
 void write_edges_csv(const std::string& path,
                       const std::vector<std::pair<int,int>>& edges) {
@@ -82,3 +85,5 @@ void export_all_gui_artifacts(
     write_nodes_csv(output_dir + "/nodes.csv", nodes);
     write_accounts_csv(output_dir + "/accounts.csv", accounts);
 }
+
+} //namespace microtorch

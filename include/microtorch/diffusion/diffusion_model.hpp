@@ -21,12 +21,12 @@ namespace microtorch {
         TensorPtr W_out_, b_out_;//between second hidden layer and output
 
     public:
-        //in_features = input width per point = 3  (x, y, normalized-t)
-        // hidden = no. hidden layer neurons (e.g. 64)
-        // out_features =  output width each point = 2  (predicted x-noise, y-noise)
+        //in_features = input width per point = 10  (x, y, normalized-t)
+        //hidden = no. hidden layer neurons (eg 64)
+        //out_features =  output width each point = 2  (predicted x-noise, y-noise)
         DiffusionModel(int in_features, int hidden, int out_features);
 
-        //predicts the noise for each input row not that input is (n, 3), output (n, 2).
+        //predicts the noise for each input row not that input is (n, 10), output (n, 2).
         //just a simple and plain MLP.
         TensorPtr forward(const TensorPtr& input);
 

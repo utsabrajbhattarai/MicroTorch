@@ -3,6 +3,8 @@
 #include <vector>
 #include <utility>
 
+namespace microtorch{
+    
 // for displaying nodes in gui, exporting the following things
 struct NodeVisData {
     int node_id;
@@ -42,3 +44,5 @@ void export_all_gui_artifacts(
     const std::vector<NodeVisData>& nodes,
     const std::vector<AccountRecord>& accounts
 );
+
+} //namespace microtorch
