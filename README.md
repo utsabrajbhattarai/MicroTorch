@@ -1,133 +1,194 @@
 # MicroTorch
 
-A from-scratch C++ automatic-differentiation engine with built-in gradient
-verification, demonstrated by a graph neural network for anti-money-laundering
-detection and a diffusion-based generative model. No machine-learning libraries
-are used — only Eigen for dense and sparse linear algebra.
+**A from-scratch reverse-mode automatic differentiation engine in C++ — with a Graph Neural Network and a Diffusion model built on top to prove it's general.**
 
-The engine is the product. The GNN and the diffusion model are demos that prove
-it is a genuine framework rather than a one-architecture hack: both are built
-from the same minimal op set, with no engine-side special-casing for either.
+<p align="center">
+  <img alt="language" src="https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white">
+  <img alt="build" src="https://img.shields.io/badge/build-CMake-064F8C?logo=cmake&logoColor=white">
+  <img alt="deps" src="https://img.shields.io/badge/engine%20deps-Eigen%20only-2F7E78">
+  <img alt="tests" src="https://img.shields.io/badge/gradients-finite--diff%20checked-E8743B">
+  <img alt="course" src="https://img.shields.io/badge/course-OOP%20(ENCT%20151)-8A8175">
+</p>
 
-## Status
+---
 
-Complete and verified end to end. The `Tensor` type and reverse-mode autograd
-work through a topological backward pass, every operation is checked against
-finite differences, and both demos train and produce results.
+## What is this?
 
-**Engine**
-- `Tensor` and reverse-mode autograd (topological backward pass over a graph of
-  captured backward closures)
-- Operations, each gradient-checked: `matmul`, `broadcast_add`, `add`, `relu`,
-  `sum`, `mean`, `mse_loss`, `neighbor_aggregation` (sparse), and the fused
-  `softmax_cross_entropy` (with a masked overload for semi-supervised labels)
-- Optimizers: `SGD` and `Adam`, sharing an abstract `Optimizer` base class
-  (pure-virtual `step()`, shared `zero_grad()`), validated on a toy quadratic
-- A `gradient_check` harness with a Catch2 test per op — including a
-  deliberately broken op, so the suite proves the harness *catches* wrong
-  gradients, not just that it passes correct ones
+Every deep-learning framework — PyTorch, TensorFlow — is built around one hidden mechanism: **automatic differentiation**. MicroTorch reconstructs that mechanism from first principles in C++, depending only on [Eigen](https://eigen.tuxfamily.org) for matrix arithmetic and **no machine-learning frameworks**.
 
-**Demos**
-- **GNN** (`gnn_train`): loads the Elliptic dataset, builds a two-layer GCN from
-  the ops above, trains with Adam on a stratified split, and reports
-  precision / recall / F1 / accuracy / AUROC. Runs a GNN-vs-MLP ablation across
-  three seeds to isolate the contribution of graph structure; both land around
-  0.96–0.98 AUROC, in line with the published ~0.95 GCN baseline.
-- **Diffusion** (`diffusion_train`): a DDPM denoiser (an MLP with a sinusoidal
-  time embedding) trained with MSE on predicted noise, then ancestral sampling
-  that resolves Gaussian noise into a 2D shape and exports the frames.
+The engine isn't the demo — **the engine _is_ the product.** To prove it's a genuinely general framework rather than something tailored to one model, we built two fundamentally different models on the exact same operations, tensors, optimizers, and backward pass:
 
-**Tooling**
-- Evaluation metrics, a CSV training logger, and two raylib front-ends: an
-  anti-money-laundering dashboard and a diffusion animation viewer.
+| Model | Type | Task |
+|---|---|---|
+| **Graph Neural Network** | Discriminative | Anti-money-laundering node classification on the Elliptic Bitcoin dataset |
+| **Diffusion Model** | Generative | Generating 2-D shapes from pure noise (DDPM) |
 
-## Build
+Two interactive [raylib](https://www.raylib.com) desktop viewers make the results tangible: an AML analyst dashboard and an animated denoising viewer.
 
-Requires CMake 3.16+ and a C++17 compiler. Eigen and Catch2 are pulled through
-CMake `FetchContent`, so no manual install is needed. raylib is fetched only for
-the GUI executables — the engine and its tests do not depend on it.
+---
+
+## Highlights
+
+-  **Hand-built autograd** — a `Tensor` computation graph with reverse-mode backpropagation via topological traversal.
+-  **Every gradient verified** — each operation is checked against a numerical finite-difference estimate (the incorruptible ground truth), catching both implementation and derivation bugs.
+-  **Graph Neural Network** — sparse neighbor aggregation, semi-supervised masked loss, and a controlled GNN-vs-MLP ablation.
+-  **Diffusion model** — linear noise schedule, DDPM ancestral sampling, and a sinusoidal timestep embedding (Transformer-style).
+-  **Two GUIs** — decoupled from the engine through CSV artifacts; they read files, they don't link the engine.
+-  **OOP by principle** — encapsulation where invariants exist, an abstract `Optimizer` hierarchy, three flavors of polymorphism, and composition as the structural backbone.
+
+---
+
+## Architecture
+
+Three layers, strictly one-directional dependencies. The engine depends only on Eigen; the demos depend on the engine; the GUIs depend on neither — they're decoupled through the filesystem.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  ENGINE  (libmicrotorch, static library)          depends: Eigen  │
+│  Tensor · reverse-mode backward · ops · optimizers · grad-check   │
+└──────────────────────────────────────────────────────────────────┘
+            │                                    ▲
+            ▼                                    │  (reads CSV artifacts)
+┌───────────────────────────┐        ┌───────────────────────────────┐
+│  DEMOS  (apps)            │        │  GUIs  (raylib)                │
+│  gnn_train                │──CSV──▶│  gnn_dashboard                 │
+│  diffusion_train          │──CSV──▶│  diffusion_viewer              │
+└───────────────────────────┘        └───────────────────────────────┘
+```
+
+---
+
+## Repository layout
+
+```
+MicroTorch/
+├── include/microtorch/     # public headers (the API surface)
+│   ├── Tensor.hpp          #   the core autograd node
+│   ├── ops/                #   one header per operation
+│   ├── optim/              #   Optimizer (abstract) → SGD, Adam
+│   ├── gnn/ · diffusion/   #   the two models
+│   └── data/ · eval/ · gui/
+├── src/                    # implementations → compiled into libmicrotorch
+├── app/
+│   ├── gnn_train.cpp       #   trains + evaluates the GNN (+ ablation)
+│   ├── diffusion_train.cpp #   trains the denoiser, exports animation frames
+│   └── gui/                #   gnn_dashboard + diffusion_viewer (raylib)
+├── tests/                  # per-operation gradient checks
+├── gui_artifacts/          # CSVs the dashboard reads
+├── frames/                 # per-shape diffusion animation CSVs
+└── data/                   # Elliptic dataset (see data/README.md)
+```
+
+---
+
+## Getting started
+
+### Prerequisites
+
+- A **C++17** compiler (g++ / clang++ / MSVC)
+- **CMake** ≥ 3.16
+- **Git** and an internet connection on the first configure
+
+> Eigen, raylib, and Catch2 are fetched **automatically** by CMake at configure time — nothing to install by hand.
+
+### Build
 
 ```bash
-cmake -B build -S .
+cmake -B build -S .        # configures + downloads dependencies (first run takes a few minutes)
+cmake --build build        # compiles the engine, demos, GUIs, and tests
+```
+
+For fast training runs, build optimized:
+
+```bash
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-ctest --test-dir build
 ```
 
-`ctest` runs the full suite. Every operation carries a gradient check, so a
-wrong backward pass shows up as a named test failure rather than a silent bug
-that only surfaces later as a model that never learns.
+### Run
 
-## Run the demos
+Run from the project root so data and output files resolve correctly.
 
 ```bash
-# GNN: trains + evaluates, prints metrics and the GNN-vs-MLP ablation
-./build/app/gnn_train
-
-# Diffusion: trains the denoiser, samples, writes frames.csv + generated.csv
-./build/app/diffusion_train
-
-# GUIs — run from the repo root so they find their CSV artifacts
-./build/app/gui/gnn_gui            # AML dashboard   <- gui_artifacts/*.csv
-./build/app/gui/diffusion_viewer   # animation       <- frames/*.csv
+./build/app/gnn_train              # train + evaluate the GNN, export dashboard artifacts
+./build/app/diffusion_train        # train the diffusion model, export animation frames
+./build/app/gui/gnn_gui            # launch the AML analyst dashboard
+./build/app/gui/diffusion_viewer   # launch the animated denoising viewer
 ```
 
-## Layout
+*(On Windows, executables end in `.exe`.)*
 
+---
+
+## The two demos
+
+## Graph Neural Network — AML on Elliptic Bitcoin
+
+A two-layer graph convolutional network that classifies Bitcoin transactions as licit or illicit. Each node learns from its transaction neighbors via sparse neighbor aggregation. The **dashboard** ranks accounts by a continuous risk score, shows evaluation metrics, and draws an interactive transaction ego-graph with directional arrows.
+
+> **Honest finding.** In a controlled ablation, disabling neighbor aggregation (reducing the model to a plain MLP) *matched or beat* the GNN — the Elliptic features already encode neighborhood information, so extra aggregation over-smooths. Reported as a real result, not hidden. The value is that the engine can express and rigorously compare both.
+
+## Diffusion Model — shapes from noise
+
+A small MLP denoiser trained to reverse a gradual noising process. Starting from pure Gaussian noise, DDPM ancestral sampling iteratively removes predicted noise until a shape emerges. A **sinusoidal timestep embedding** (the Transformer positional-encoding trick) was the key unlock that broke a training plateau. The **viewer** animates the denoising with a scrubbable timeline and a shape gallery.
+
+---
+
+## How the engine works
+
+A `Tensor` is a node in a computation graph. It holds its value, its gradient, its parents, and a closure describing how to differentiate the operation that produced it:
+
+```cpp
+class Tensor {
+    Eigen::MatrixXd data;                 // the value
+    Eigen::MatrixXd grad;                 // accumulated gradient
+    std::vector<TensorPtr> parents;       // where it came from
+    std::function<void()> backward_fnc;   // how to push gradient to parents
+};
 ```
-include/microtorch/   public headers
-  Tensor.hpp          the core tensor type + autograd node
-  gradient_check.hpp  finite-difference verification
-  ops/                matmul, broadcast_add, add, relu, reduction,
-                      mse_loss, neighbor_aggregation, softmax_cross_entropy
-  optim/              optimizer (abstract base), sgd, adam
-  gnn/                node-classification model
-  diffusion/          denoiser + noise schedule
-  data/               data_loader (Elliptic) + toy_data (2D shapes)
-  eval/               precision / recall / F1 / accuracy / AUROC
-  gui/                CSV export for the dashboard
-src/                  engine implementation, builds as libmicrotorch
-tests/                Catch2, mirrors src one-to-one, a test file per op
-app/                  gnn_train, diffusion_train
-  gui/                gnn_dashboard + diffusion_viewer (raylib) + csv_loader
-data/                 gitignored dataset, see data/README.md
-gui_artifacts/        CSVs the dashboard reads (nodes, edges, accounts, metrics)
-frames/               pre-baked diffusion animations for the viewer
+
+The forward pass builds the graph but computes no gradients. Calling `backward()` on a scalar loss performs a topological sort, seeds the loss gradient to 1, and walks the graph **in reverse**, firing each node's `backward_fnc` so gradient flows from the loss back to every parameter via the chain rule.
+
+**The backward pass is data — a list of closures — not control flow.** Each operation records its own derivative rule as a captured lambda, giving runtime polymorphism through type erasure without a parallel class hierarchy.
+
+---
+
+## Testing
+
+Every operation's backward pass is verified by gradient checking — comparing the analytic gradient against a central finite-difference estimate. Because finite differences depend only on the definition of a derivative, they catch wrong *math*, not just wrong *code*.
+
+```bash
+cd build && ctest        # each operation is a separate test; a failure names the exact component
 ```
 
-## Datasets
+> Catch2 is a **build-time test harness only** — it is not linked into or part of the engine, which depends solely on Eigen.
 
-**GNN**: the [Elliptic Bitcoin dataset](https://www.kaggle.com/datasets/ellipticco/elliptic-data-set),
-a node-classification task run as binary licit vs illicit with the unlabeled
-nodes held out. The graph is sparse and split into 49 time steps with no edges
-between them, so it is stored as a sparse adjacency — self-looped and
-symmetrically normalized (`D^-1/2 A D^-1/2`) — and trained on the labeled
-subset. See `data/README.md` for sourcing.
+---
 
-**Diffusion**: 2D toy data generated locally, not downloaded. Seven shape
-generators are provided: spiral, light spiral, two moons, checkerboard, heart,
-concentric circles, and infinity. This is kept separate from the GNN data by
-design, since classification and generation are different tasks and share no
-inputs.
+## Tech stack
 
-## Visualization
+| | |
+|---|---|
+| **Language** | C++17 |
+| **Engine dependency** | Eigen 3.4 (matrix arithmetic) |
+| **GUI** | raylib 5.5 |
+| **Build** | CMake (FetchContent for all deps) |
+| **Testing** | Catch2 (build-time only) |
 
-Two raylib front-ends under `app/gui/`, deliberately decoupled from the engine:
-they read CSV artifacts on disk rather than linking `libmicrotorch`, so a rebuild
-of the engine never breaks the GUI and vice versa.
+---
 
-- **AML dashboard** (`gnn_gui`): reads `gui_artifacts/*.csv` and shows a data
-  preview, a paginated table of accounts ranked by predicted risk, a metrics
-  panel, and an interactive per-account subgraph — counterparties split into
-  received (left) and sent (right) with directional arrows, colored by predicted
-  label.
-- **Diffusion viewer** (`diffusion_viewer`): reads `frames/*.csv`, offers a menu
-  of shapes, and animates the reverse denoising process — a noise cloud
-  resolving into the chosen 2D shape — with a scrub slider, play/pause, and a
-  faint overlay of the target shape.
+## Authors
 
-## Team
+Built for the Object-Oriented Programming course (ENCT 151), Institute of Engineering, Pulchowk Campus, Tribhuvan University.
 
-Two teammates own bounded, independently testable pieces: the data pipeline, the
-SGD and Adam optimizers, evaluation metrics, the toy-data generators, and loss
-logging. The engine core, the GNN forward and backward logic, and the diffusion
-training loop are owned end to end by the project lead.
+- **Utsab Raj Bhattarai**
+- **Sonik Bhusal**
+- **Shubham Pokhrel**
+
+Developed collaboratively with Git throughout — incremental commits, feature branches per component, and reviews before merging.
+
+---
+
+## License
+
+Academic project. See repository for details.
